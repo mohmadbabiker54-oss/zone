@@ -3,6 +3,19 @@ import { motion, AnimatePresence } from 'motion/react';
 import Papa from 'papaparse';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { LocationService, LocationResult } from './services/locationService';
+
+// Fix Leaflet icon issues in Vite
+const DefaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
 import { 
   saveProducts, 
   getProducts, 
@@ -18,6 +31,8 @@ import {
   FileText, 
   RefreshCw, 
   Smartphone, 
+  Plus,
+  Minus,
   QrCode, 
   Briefcase, 
   Users, 
@@ -238,8 +253,6 @@ import {
   Award,
   Badge,
   Check,
-  Minus,
-  Plus,
   Equal,
   Divide,
   Percent,
@@ -505,7 +518,7 @@ const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInv
                       <div className="relative w-24 h-24 flex-shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-3xl blur-md opacity-20 group-hover:opacity-40 transition-opacity" />
                         <img 
-                          src={item.image} 
+                          src={item.image || null} 
                           alt={item.label} 
                           className="w-full h-full object-cover rounded-2xl shadow-2xl border-2 border-white/20 relative z-10 transform group-hover:scale-110 transition-transform duration-500" 
                           referrerPolicy="no-referrer" 
@@ -647,7 +660,7 @@ const InvoiceModal = ({ isOpen, onClose, onProceedToPayment, cart, userData }: {
           {/* Header */}
           <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-8 relative z-10">
             <div className="text-left">
-              <h1 className="text-xl font-black text-green-800 leading-tight">GENEWARA ZONE</h1>
+              <h1 className="text-xl font-black text-green-800 leading-tight">KILIMANJARO ZONE</h1>
               <p className="text-sm font-black text-gray-800 tracking-widest">AGRIBUSINESS</p>
             </div>
             <div className="flex flex-col items-center">
@@ -792,16 +805,11 @@ const SuccessScreen = ({ onBackToHome }: { onBackToHome: () => void }) => {
           className="space-y-6 max-w-xl"
         >
           <h2 className="text-4xl font-black text-green-900 drop-shadow-sm leading-tight">
-            تم توثيق طلبك بنجاح في أرشيف زون المشفر
+            تم توثيق طلبك بنجاح في أرشيف زون المشفر..
           </h2>
           <p className="text-2xl font-bold text-green-700/80 italic leading-relaxed">
-            "شكراً لثقتك بـ (زون) واختيارك لها.. لقد استلمنا طلبك، وفريقنا سيعمل على رعاية شتلاتك لتصل إليك بأفضل حال."
+            "شكراً لثقتك بـ (زون) واختيارك لها.. لقد استلمنا طلبك"
           </p>
-          <div className="pt-4">
-            <p className="text-lg font-black text-green-600 animate-pulse">
-              شتلاتك في طريقها للحياة..
-            </p>
-          </div>
         </motion.div>
 
         <motion.button
@@ -827,12 +835,95 @@ const SuccessScreen = ({ onBackToHome }: { onBackToHome: () => void }) => {
   );
 };
 
+const MapController = ({ center, zoom }: { center: [number, number], zoom: number }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, zoom, { animate: true });
+  }, [center, zoom, map]);
+  return null;
+};
+
+const MapEvents = ({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) => {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+};
+
 const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: boolean, onClose: () => void, userData: UserData | null, cart: any[], onSuccess: () => void }) => {
   const [isCopying, setIsCopying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<LocationResult | null>(null);
+  const [markerPos, setMarkerPos] = useState<[number, number]>([15.6550, 32.4850]); // Precise Omdurman/Nile Area
+  const [mapZoom, setMapZoom] = useState(17);
+  const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard'); 
+  const [accuracyWarning, setAccuracyWarning] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfContentRef = useRef<HTMLDivElement>(null);
+  const mapContentRef = useRef<HTMLDivElement>(null);
+  const receiptContentRef = useRef<HTMLDivElement>(null);
+  const invoiceContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchInitialLoc = async () => {
+        const loc = await LocationService.getCurrentLocation();
+        
+        if (loc.coords) {
+          const lat = loc.coords.latitude;
+          const lng = loc.coords.longitude;
+          const acc = loc.coords.accuracy || 1000;
+          
+          // AGGRESSIVE LOCAL BOUNDARY (Omdurman/Khartoum Box)
+          // Khartoum is approx 15.5, 32.5. We strictly trust only a 60km radius.
+          // anything outside lat [15.1 - 16.0] or lng [32.1 - 33.0] is REJECTED.
+          const isFarAway = lat < 15.1 || lat > 16.1 || lng < 32.1 || lng > 33.1; 
+          
+          if (isFarAway || acc > 500) {
+            // It's likely the IP-based location in Shendi, Port Sudan or just bad signal
+            setMarkerPos([15.6550, 32.4850]); // Residential Omdurman / Nile Area
+            setMapZoom(16);
+            setAccuracyWarning(acc > 500 
+              ? `إشارة الـ GPS غير مستقرة (${Math.round(acc)}م). تم وضع الدبوس تقريبياً في أم درمان؛ يرجى تحريكه بدقة.` 
+              : "تم رصد موقع خارج الولاية (شندي/بورتسودان)؛ تم إعادتك لأم درمان لضمان دقة التوصيل.");
+          } else if (acc <= 50) {
+            // High precision auto-lock (Neighborhood level found)
+            setMarkerPos([lat, lng]);
+            setMapZoom(18); 
+            setCurrentLocation(loc);
+            setAccuracyWarning("تم العثور عليك بدقة 50 متر. فضلاً، اسحب الدبوس الآن ليكون فوق باب منزلك بدقة 1 متر.");
+          } else {
+            // Moderate lock
+            setMarkerPos([lat, lng]);
+            setMapZoom(17); 
+            setCurrentLocation(loc);
+            setAccuracyWarning("تم تحديد موقعك التقريبي؛ يرجى سحب الدبوس فوق منزلك بدقة متناهية.");
+          }
+        } else if (loc.error) {
+          setMarkerPos([15.6550, 32.4850]);
+          setMapZoom(16);
+          setAccuracyWarning("تعذر جلب موقعك بدقة. تم فتح الخريطة في أم درمان؛ يرجى تحديد موقعك يدوياً.");
+        }
+      };
+      
+      fetchInitialLoc();
+    }
+  }, [isOpen]);
+
+  const handleManualMapUpdate = (lat: number, lng: number) => {
+    setMarkerPos([lat, lng]);
+    setMapZoom(18); // STREET LEVEL (Safer than 19 for tile availability)
+    setAccuracyWarning(null);
+    setCurrentLocation({
+      coords: { latitude: lat, longitude: lng, accuracy: 0 },
+      isAccurate: true,
+      timestamp: Date.now()
+    });
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText("1297423");
@@ -841,42 +932,82 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
   };
 
   const generateSecurePDF = async () => {
-    if (!userData || !receipt || !pdfContentRef.current) return;
+    if (!userData || !receipt) return;
     
     setIsGenerating(true);
     try {
       // Ensure images are loaded and layout is stable
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const canvas = await html2canvas(pdfContentRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: true,
-        backgroundColor: '#ffffff',
-        windowWidth: 800,
-        onclone: (clonedDoc) => {
-          const el = clonedDoc.getElementById('pdf-content-to-capture');
-          if (el) {
-            el.style.position = 'relative';
-            el.style.left = '0';
-            el.style.top = '0';
-            el.style.visibility = 'visible';
-            el.style.display = 'block';
-          }
-        }
-      });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
-      
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      const pdfPageHeight = pdf.internal.pageSize.getHeight();
+
+      // 1. Capture Map Section (Page 1)
+      if (mapContentRef.current) {
+        const canvas = await html2canvas(mapContentRef.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: 800
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfPageHeight), undefined, 'FAST');
+        
+        if (markerPos) {
+          const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${markerPos[0]},${markerPos[1]}`;
+          // Link overlay on the map image area (approx)
+          pdf.link(24, 70, 160, 80, { url: mapsUrl });
+        }
+      }
+
+      // 2. Capture Receipt Section (Page 2)
+      if (receiptContentRef.current) {
+        pdf.addPage();
+        const canvas = await html2canvas(receiptContentRef.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: 800
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfPageHeight), undefined, 'FAST');
+      }
+
+      // 3. Capture Invoice Section (Page 3+)
+      if (invoiceContentRef.current) {
+        const canvas = await html2canvas(invoiceContentRef.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: 800
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const totalHeight = (canvas.height * pdfWidth) / canvas.width;
+        let currentPosition = 0;
+        
+        while (currentPosition < totalHeight) {
+          pdf.addPage();
+          pdf.addImage(
+            imgData, 
+            'JPEG', 
+            0, 
+            -currentPosition, 
+            pdfWidth, 
+            totalHeight,
+            undefined,
+            'FAST'
+          );
+          currentPosition += pdfPageHeight;
+        }
+      }
       
       // Set Metadata
       pdf.setProperties({
@@ -889,37 +1020,32 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
       const dateStr = new Date().toISOString().split('T')[0];
       const fileName = `${userData.name}_${userData.fatherName}_${dateStr}-${userData.whatsapp}.pdf`.replace(/\s+/g, '_');
       
-      if (receipt) {
-        pdf.addPage();
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        pdf.addImage(receipt, 'JPEG', 10, 10, pageWidth - 20, pageHeight - 20, undefined, 'FAST');
-      }
+      if (userData && fileName) {
+        // Prepare PDF for Google Apps Script
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        
+        // Send to Google Apps Script (doPost)
+        try {
+          const response = await fetch('https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8',
+            },
+            body: JSON.stringify({
+              pdfBase64,
+              fileName
+            })
+          });
 
-      // Prepare PDF for Google Apps Script
-      const pdfBase64 = pdf.output('datauristring').split(',')[1];
-      
-      // Send to Google Apps Script (doPost)
-      try {
-        const response = await fetch('https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8',
-          },
-          body: JSON.stringify({
-            pdfBase64,
-            fileName
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log("PDF sent to Google Drive successfully:", result);
-        } else {
-          console.error("Server responded with an error");
+          if (response.ok) {
+            const result = await response.json();
+            console.log("PDF sent to Google Drive successfully:", result);
+          } else {
+            console.error("Server responded with an error");
+          }
+        } catch (err) {
+          console.error("Error sending PDF to Google Drive:", err);
         }
-      } catch (err) {
-        console.error("Error sending PDF to Google Drive:", err);
       }
 
       pdf.save(fileName);
@@ -1062,6 +1188,137 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
             </div>
           </div>
 
+          {/* Location Selection Section */}
+          <div className="w-full space-y-4">
+            <div className="bg-black/40 p-4 rounded-3xl border-2 border-yellow-600/20">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-right">
+                  <h4 className="text-white font-black text-lg flex items-center space-x-reverse space-x-2">
+                    <Globe size={20} className={mapMode === 'satellite' ? 'text-blue-400' : 'text-yellow-500'} />
+                    <span>تحديد موقع التوصيل بدقة فائقـة</span>
+                  </h4>
+                  <p className="text-yellow-500/60 text-xs font-bold">نمط الرؤية: {mapMode === 'satellite' ? 'قمر صناعي (Satellite)' : 'خريطة طرق (Standard)'}</p>
+                </div>
+                {markerPos && (
+                   <div className="bg-green-500/10 px-3 py-1 rounded-full border border-green-500/30">
+                     <span className="text-green-500 text-[10px] font-black tracking-widest font-mono">
+                       {markerPos[0].toFixed(6)}, {markerPos[1].toFixed(6)}
+                     </span>
+                   </div>
+                )}
+              </div>
+
+              {/* Interactive Map */}
+              <div className="w-full h-[450px] rounded-2xl overflow-hidden border-2 border-white/10 relative z-0">
+                <MapContainer center={markerPos} zoom={mapZoom} zoomControl={false} style={{ height: '100%', width: '100%' }}>
+                  {mapMode === 'standard' ? (
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    />
+                  ) : (
+                    <TileLayer
+                      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                      attribution='Tiles &copy; Esri'
+                    />
+                  )}
+                  <MapController center={markerPos} zoom={mapZoom} />
+                  <MapEvents onMapClick={handleManualMapUpdate} />
+                  <Marker 
+                    position={markerPos} 
+                    draggable={true}
+                    eventHandlers={{
+                      dragend: (e) => {
+                        const marker = e.target;
+                        const pos = marker.getLatLng();
+                        handleManualMapUpdate(pos.lat, pos.lng);
+                      },
+                    }}
+                  />
+                </MapContainer>
+
+                {/* Custom Map Controls */}
+                <div className="absolute top-4 left-4 z-[400] flex flex-col space-y-3">
+                  {/* Zoom Controls */}
+                  <div className="flex flex-col bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+                    <button 
+                      onClick={() => setMapZoom(prev => Math.min(prev + 1, 19))}
+                      className="p-3 hover:bg-gray-100 text-black border-b border-gray-100 flex items-center justify-center"
+                    >
+                      <Plus size={20} className="font-black" />
+                    </button>
+                    <button 
+                      onClick={() => setMapZoom(prev => Math.max(prev - 1, 10))}
+                      className="p-3 hover:bg-gray-100 text-black flex items-center justify-center"
+                    >
+                      <Minus size={20} className="font-black" />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setMapMode(mapMode === 'standard' ? 'satellite' : 'standard')}
+                    className={`flex items-center space-x-reverse space-x-2 px-4 py-2 rounded-xl border-2 transition-all ${
+                      mapMode === 'satellite' 
+                      ? 'bg-blue-600 text-white border-blue-400' 
+                      : 'bg-white text-gray-800 border-gray-300'
+                    } shadow-xl font-bold`}
+                  >
+                    <Globe size={18} />
+                    <span className="text-xs">{mapMode === 'satellite' ? 'نمط القمر الصناعي' : 'نمط الخريطة'}</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setMarkerPos([15.6333, 32.4833]);
+                      setMapZoom(16);
+                    }}
+                    className="bg-black/80 text-white px-3 py-2 rounded-xl border border-yellow-600/50 text-[10px] font-black flex items-center space-x-reverse space-x-2 shadow-2xl"
+                  >
+                    <Home size={14} />
+                    <span>توسيط أم درمان</span>
+                  </button>
+                </div>
+
+                <div className="absolute bottom-4 right-4 z-[400] flex flex-col space-y-3 items-end">
+                   {/* Accuracy Status Capsule */}
+                   {currentLocation?.coords?.accuracy && (
+                     <div className="bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 mb-2">
+                        <p className="text-[10px] text-white font-bold flex items-center space-x-reverse space-x-2">
+                           <Wind size={12} className="text-blue-400" />
+                           <span>دقة الإشارة: {Math.round(currentLocation.coords.accuracy)} متر</span>
+                        </p>
+                     </div>
+                   )}
+
+                  <button
+                    onClick={async () => {
+                      const loc = await LocationService.getCurrentLocation();
+                      if (loc.coords) {
+                        handleManualMapUpdate(loc.coords.latitude, loc.coords.longitude);
+                      }
+                    }}
+                    className="bg-white text-black p-4 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.4)] border-4 border-yellow-600 hover:bg-yellow-50 transition-all flex items-center"
+                  >
+                    <Compass size={32} className="text-yellow-600" />
+                  </button>
+                </div>
+              </div>
+
+              {accuracyWarning && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 p-3 bg-red-600/20 border border-red-600/50 rounded-xl flex items-start space-x-reverse space-x-3"
+                >
+                  <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={16} />
+                  <p className="text-red-400 text-[10px] font-black leading-relaxed">
+                    {accuracyWarning}
+                  </p>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
           {/* Upload Section */}
           <div className="w-full space-y-4">
             <input 
@@ -1122,15 +1379,14 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
               )}
             </motion.button>
           </div>
-        </div>
 
-        {/* Hidden PDF Content Template */}
+        {/* Hidden PDF Templates Section */}
         <div className="fixed left-[-9999px] top-0 pointer-events-none z-[-100]">
-          <div id="pdf-content-to-capture" ref={pdfContentRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Cairo, sans-serif' }} dir="rtl">
-            {/* Invoice Header */}
+          {/* Page 1: Map / Geolocation Template */}
+          <div ref={mapContentRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Cairo, sans-serif' }} dir="rtl">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1f2937', paddingBottom: '24px', marginBottom: '32px' }}>
               <div style={{ textAlign: 'left' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#065f46' }}>GENEWARA ZONE</h1>
+                <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#065f46' }}>KILIMANJARO ZONE</h1>
                 <p style={{ fontSize: '14px', fontWeight: '900', color: '#1f2937', letterSpacing: '0.1em' }}>AGRIBUSINESS</p>
               </div>
               <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" alt="logo" style={{ width: '80px', height: '80px' }} />
@@ -1140,25 +1396,81 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
               </div>
             </div>
 
-            {/* User Info */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginBottom: '40px', fontSize: '20px', fontWeight: 'bold' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <p>الاسم بالكامل: {userData?.name} {userData?.fatherName}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginBottom: '30px', fontSize: '20px', fontWeight: 'bold' }}>
+               <p>العميل: {userData?.name} {userData?.fatherName}</p>
+               <p style={{ textAlign: 'right' }}>التاريخ: {new Date().toLocaleDateString('ar-EG')}</p>
+            </div>
+
+            {markerPos && (
+              <div style={{ padding: '24px', backgroundColor: '#f0f9ff', border: '3px solid #0369a1', borderRadius: '20px', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '8px', backgroundColor: '#0369a1' }} />
+                <h3 style={{ fontSize: '24px', fontWeight: '900', color: '#0369a1', marginBottom: '20px', textAlign: 'center' }}>التوثيق الجغرافي (بروتوكول الدقة فائقـة):</h3>
+                
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'center' }}>
+                  <img 
+                    src={`https://static-maps.yandex.ru/1.x/?ll=${markerPos[1]},${markerPos[0]}&z=18&l=sat&size=450,450&pt=${markerPos[1]},${markerPos[0]},pm2rdl`} 
+                    alt="Map"
+                    style={{ width: '300px', height: '300px', borderRadius: '12px', border: '3px solid #0369a1' }}
+                  />
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ backgroundColor: '#ffffff', padding: '16px', borderRadius: '12px', border: '2px solid #bae6fd', marginBottom: '20px' }}>
+                      <p style={{ fontSize: '16px', color: '#64748b', marginBottom: '8px' }}>إحداثيات التوصيل المعتمدة:</p>
+                      <p style={{ fontSize: '26px', fontWeight: 'bold', color: '#0c4a6e', fontFamily: 'monospace' }}>
+                        {markerPos[0].toFixed(6)}<br/>{markerPos[1].toFixed(6)}
+                      </p>
+                    </div>
+                    <div style={{ padding: '16px', backgroundColor: '#0369a1', borderRadius: '12px', color: '#ffffff', fontWeight: '999', fontSize: '18px' }}>
+                      رابط خرائط جوجل مفعل
+                    </div>
+                  </div>
+                </div>
+                <p style={{ marginTop: '20px', fontSize: '14px', color: '#334155', textAlign: 'center', fontWeight: '900' }}>
+                   تم تحديد الموقع يدوياً من قبل العميل لضمان الوصول لباب المنزل بدقة 1 متر.
+                </p>
               </div>
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <p>التاريخ: {new Date().toLocaleDateString('ar-EG')}</p>
-                <p>رقم الواتساب: {userData?.whatsapp}</p>
+            )}
+
+            <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '2px solid #e5e7eb', textAlign: 'center' }}>
+              <p style={{ fontSize: '14px', color: '#64748b' }}>هذه الصفحة مخصصة لغرفة عمليات التوصيل - نظام زون الذكي</p>
+            </div>
+          </div>
+
+          {/* Page 2: Bank Receipt Template */}
+          <div ref={receiptContentRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Cairo, sans-serif', textAlign: 'center' }} dir="rtl">
+            <div style={{ width: '100%', border: '8px solid #f3f4f6', borderRadius: '24px', overflow: 'hidden' }}>
+              {receipt ? <img src={receipt} style={{ width: '100%', height: 'auto' }} alt="receipt" /> : null}
+            </div>
+            <div style={{ marginTop: '20px', opacity: 0.5 }}>
+              <p style={{ fontSize: '12px', fontWeight: 'bold' }}>إشعار الدفع الإلكتروني المرفق - نظام أرشفة مشتل زون</p>
+            </div>
+          </div>
+
+          {/* Page 3+: Full Invoice Template */}
+          <div ref={invoiceContentRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Cairo, sans-serif' }} dir="rtl">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1f2937', paddingBottom: '24px', marginBottom: '32px' }}>
+              <div style={{ textAlign: 'left' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#065f46' }}>KILIMANJARO ZONE</h1>
+                <p style={{ fontSize: '14px', fontWeight: '900', color: '#1f2937', letterSpacing: '0.1em' }}>AGRIBUSINESS</p>
+              </div>
+              <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" alt="logo" style={{ width: '80px', height: '80px' }} />
+              <div style={{ textAlign: 'right' }}>
+                <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#065f46' }}>مشتل زون</h1>
+                <p style={{ fontSize: '14px', fontWeight: '900', color: '#1f2937' }}>للأعمال الزراعية</p>
               </div>
             </div>
 
-            {/* Items Table */}
+            <div style={{ marginBottom: '30px', fontSize: '20px', fontWeight: 'bold' }}>
+              <p>فاتورة مبيعات للعميل: {userData?.name} {userData?.fatherName}</p>
+              <p>الرقم التعريفي: {userData?.whatsapp}</p>
+            </div>
+
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f3f4f6', borderTop: '4px solid #1f2937', borderBottom: '4px solid #1f2937' }}>
-                  <th style={{ padding: '16px', textAlign: 'right', borderLeft: '1px solid #d1d5db', borderRight: '1px solid #d1d5db', fontSize: '24px', fontWeight: '900' }}>اسم المنتج</th>
-                  <th style={{ padding: '16px', textAlign: 'center', borderLeft: '1px solid #d1d5db', borderRight: '1px solid #d1d5db', fontSize: '24px', fontWeight: '900' }}>الكمية</th>
-                  <th style={{ padding: '16px', textAlign: 'center', borderLeft: '1px solid #d1d5db', borderRight: '1px solid #d1d5db', fontSize: '24px', fontWeight: '900' }}>السعر</th>
-                  <th style={{ padding: '16px', textAlign: 'left', borderLeft: '1px solid #d1d5db', borderRight: '1px solid #d1d5db', fontSize: '24px', fontWeight: '900' }}>الإجمالي</th>
+                  <th style={{ padding: '16px', textAlign: 'right', fontSize: '20px', fontWeight: '900' }}>المنتج</th>
+                  <th style={{ padding: '16px', textAlign: 'center', fontSize: '20px', fontWeight: '900' }}>الكمية</th>
+                  <th style={{ padding: '16px', textAlign: 'center', fontSize: '20px', fontWeight: '900' }}>السعر</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '20px', fontWeight: '900' }}>الإجمالي</th>
                 </tr>
               </thead>
               <tbody>
@@ -1177,34 +1489,38 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
               </tbody>
               <tfoot>
                 <tr style={{ borderTop: '4px solid #1f2937', backgroundColor: '#f9fafb' }}>
-                  <td colSpan={3} style={{ padding: '24px', textAlign: 'right', fontWeight: '900', fontSize: '24px' }}>المجموع الكلي</td>
+                  <td colSpan={3} style={{ padding: '24px', textAlign: 'right', fontWeight: '900', fontSize: '24px' }}>المجموع النهائي</td>
                   <td style={{ padding: '24px', textAlign: 'left', fontWeight: '900', fontSize: '24px', color: '#047857' }}>
-                    {(cart.reduce((acc, item) => acc + (parseFloat(item.price) || 0), 0) * 1000).toLocaleString()}
+                    {(cart.reduce((acc, item) => acc + (parseFloat(item.price) || 0), 0) * 1000).toLocaleString()} SDG
                   </td>
                 </tr>
               </tfoot>
             </table>
 
-            {/* Payment Proof Section */}
-            <div style={{ marginTop: '40px', borderTop: '4px dashed #9ca3af', paddingTop: '40px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: '900', textAlign: 'center', marginBottom: '24px', color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em' }}>إشعار الدفع المرفق (زون)</h2>
-              <div style={{ width: '100%', border: '8px solid #f3f4f6', borderRadius: '24px', overflow: 'hidden' }}>
-                {receipt ? <img src={receipt} style={{ width: '100%', height: 'auto' }} alt="receipt" /> : null}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{ marginTop: '80px', paddingTop: '40px', borderTop: '4px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div style={{ marginTop: '40px', paddingTop: '40px', borderTop: '4px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
               <div style={{ fontSize: '14px', fontWeight: '900', color: '#4b5563' }}>
+                <p>تم الإصدار بتاريخ: {new Date().toLocaleDateString('ar-EG')}</p>
                 <p>أم درمان - مدينة النيل</p>
                 <p>0123317749 / 0900951555</p>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ width: '128px', height: '128px', border: '8px solid rgba(30, 58, 138, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(12deg)', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(30, 58, 138, 0.4)', textTransform: 'uppercase', textAlign: 'center' }}>مشتل زون<br/>2026</span>
+                <div style={{ width: '120px', height: '120px', border: '6px solid rgba(6, 95, 70, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(-15deg)', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '999', color: 'rgba(6, 95, 70, 0.4)', textAlign: 'center' }}>KILIMANJARO<br/>OFFICIAL</span>
                 </div>
-                <p style={{ fontSize: '12px', fontWeight: '900' }}>الختم الرقمي المعتمد</p>
+                <p style={{ fontSize: '12px', fontWeight: '900' }}>الختم الإلكتروني المعتمد</p>
               </div>
+            </div>
+          </div>
+        </div>
+          {/* Separate Receipt Page Template */}
+          <div id="receipt-content-to-capture" ref={receiptContentRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Cairo, sans-serif' }} dir="rtl">
+            <div style={{ width: '100%', border: '8px solid #f3f4f6', borderRadius: '24px', overflow: 'hidden' }}>
+              {receipt ? <img src={receipt} style={{ width: '100%', height: 'auto' }} alt="receipt" /> : null}
+            </div>
+            
+            {/* Small Footer for receipt page too */}
+            <div style={{ marginTop: '40px', textAlign: 'center', opacity: 0.5 }}>
+              <p style={{ fontSize: '12px', fontWeight: 'bold' }}>تابع لمشتل زون لخدمات الحدائق - إشعار دفع مؤكد</p>
             </div>
           </div>
         </div>
@@ -1511,6 +1827,101 @@ const AnimatedButton = ({ icon, label, onClick, level, isGlossy }: GridItemProps
   );
 };
 
+const NotificationModal = ({ isOpen, onClose, notifications }: { isOpen: boolean, onClose: () => void, notifications: any[] }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, rotateX: 10 }}
+        animate={{ scale: 1, opacity: 1, rotateX: 0 }}
+        className="w-full max-w-lg bg-[#f0f4f0] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.5)] border-t-8 border-[#064e3b] relative"
+      >
+        {/* Ornate Background Elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#064e3b]/5 rounded-bl-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#064e3b]/5 rounded-tr-full pointer-events-none" />
+
+        <div className="bg-[#064e3b] p-8 text-white flex justify-between items-center relative overflow-hidden">
+          <motion.div 
+            initial={{ x: -20 }}
+            animate={{ x: 0 }}
+            className="flex items-center space-x-reverse space-x-4 z-10"
+          >
+            <div className="p-3 bg-yellow-500 rounded-2xl shadow-lg ring-4 ring-yellow-500/30">
+              <Bell className="text-emerald-950" size={28} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black tracking-tight">التنبيهات الإدارية</h2>
+              <p className="text-yellow-500/60 text-[10px] uppercase font-black tracking-[0.2em]">Official Notifications</p>
+            </div>
+          </motion.div>
+          <button 
+            onClick={onClose} 
+            className="p-3 hover:bg-white/20 rounded-full transition-all bg-white/10 z-10"
+          >
+            <X size={24} />
+          </button>
+          
+          {/* Animated Background Pulse */}
+          <motion.div 
+            animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.2, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="absolute -right-20 -top-20 w-64 h-64 bg-yellow-500 rounded-full blur-3xl"
+          />
+        </div>
+        
+        <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar relative">
+          {notifications.map((note, idx) => (
+            <motion.div 
+              key={idx}
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: idx * 0.15, type: 'spring' }}
+              style={{ backgroundColor: note.bg, color: note.color }}
+              className="p-8 rounded-[2rem] border-2 border-black/5 relative overflow-hidden shadow-xl hover:shadow-2xl transition-all group"
+            >
+              {/* Ornate Leaf Decorations */}
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Flower2 size={60} strokeWidth={1} />
+              </div>
+              <div className="absolute bottom-0 left-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Sprout size={60} strokeWidth={1} />
+              </div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center space-x-reverse space-x-3 mb-4 opacity-60">
+                  <Clock size={16} />
+                  <span className="text-xs font-black uppercase tracking-widest">تنبيه رقم {notifications.length - idx}</span>
+                </div>
+                <p className="text-xl font-black leading-loose text-right whitespace-pre-wrap drop-shadow-sm italic">
+                  {note.text}
+                </p>
+              </div>
+              
+              {/* Ornate Corner Accents */}
+              <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-current opacity-20" />
+              <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-current opacity-20" />
+            </motion.div>
+          ))}
+          
+          {notifications.length === 0 && (
+            <div className="text-center py-20 flex flex-col items-center justify-center">
+              <div className="w-32 h-32 bg-[#064e3b]/5 rounded-full flex items-center justify-center mb-6">
+                <Bell size={64} className="text-[#064e3b]/20" />
+              </div>
+              <p className="font-black text-2xl text-[#064e3b]/40">لا توجد تنبيهات حالياً</p>
+              <p className="text-emerald-900/40 text-sm font-bold mt-2">ستظهر الرسائل المهمة هنا فور وصولها</p>
+            </div>
+          )}
+        </div>
+        
+        <div className="bg-[#064e3b]/5 p-6 text-center border-t border-[#064e3b]/10">
+          <p className="text-[#064e3b]/60 text-xs font-black uppercase tracking-widest">المؤسسة العامة للزراعة التجميلية - زون</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -1553,64 +1964,37 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
 
       {/* Pulsating Radiant Rays (Moving Outward to Edges) */}
       <motion.div 
-        className="absolute inset-0 flex items-center justify-center"
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
         animate={{ 
           rotate: 360,
-          scale: [1, 1.05, 1]
         }}
         transition={{ 
-          rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-          scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+          duration: 30, repeat: Infinity, ease: "linear"
         }}
       >
-        {[...Array(60)].map((_, i) => (
-          <div key={i} className="absolute inset-0 flex items-center justify-center" style={{ rotate: `${i * 6}deg` }}>
+        {[...Array(12)].map((_, i) => (
+          <div key={i} className="absolute inset-0 flex items-center justify-center" style={{ rotate: `${i * 30}deg` }}>
             {/* Pulsating Ray Beam */}
             <motion.div
-              className="absolute w-[10px] origin-bottom"
+              className="absolute w-[8px] origin-bottom"
               style={{ 
                 height: '150vh',
                 bottom: '50%',
                 background: 'linear-gradient(to top, #FFD700, #F59E0B, transparent)',
-                filter: 'blur(1.5px) drop-shadow(0 0 40px #FFD700) drop-shadow(0 0 80px #B45309)',
+                filter: 'blur(1px) drop-shadow(0 0 20px #FFD700)',
                 mixBlendMode: 'screen'
               }}
               animate={{ 
-                scaleY: [0.3, 1.8, 0.3],
-                opacity: [0.2, 0.8, 0.2],
-                width: ['4px', '16px', '4px']
+                scaleY: [0.8, 1.2, 0.8],
+                opacity: [0.3, 0.6, 0.3],
               }}
               transition={{ 
-                duration: 2.5,
+                duration: 4,
                 repeat: Infinity,
-                delay: (i % 12) * 0.15,
+                delay: i * 0.2,
                 ease: "easeInOut"
               }}
             />
-            
-            {/* Fast Moving Light Quanta (The Pulse) */}
-            {[...Array(2)].map((_, j) => (
-              <motion.div
-                key={j}
-                className="absolute w-[20px] h-[20px] rounded-full bg-[#FFD700] shadow-[0_0_40px_#FFD700,0_0_80px_#F59E0B]"
-                initial={{ y: 0, opacity: 0, scale: 0 }}
-                animate={{ 
-                  y: -2000, 
-                  opacity: [0, 1, 1, 0],
-                  scale: [0.5, 3, 0.5],
-                }}
-                transition={{ 
-                  duration: 1.2,
-                  repeat: Infinity,
-                  delay: j * 0.6 + (i % 5) * 0.1,
-                  ease: "easeIn"
-                }}
-                style={{ 
-                  bottom: '50%',
-                  filter: 'drop-shadow(0 0 20px #FFD700)'
-                }}
-              />
-            ))}
           </div>
         ))}
       </motion.div>
@@ -1618,36 +2002,35 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Intense Pulsating Central Glow */}
         <motion.div 
-          className="absolute w-[160vw] h-[160vw] bg-[#FFD700]/20 rounded-full blur-[140px]"
-          animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute w-[160vw] h-[160vw] bg-[#FFD700]/10 rounded-full blur-[80px]"
+          animate={{ opacity: [0.2, 0.4, 0.2] }}
+          transition={{ duration: 3, repeat: Infinity }}
         />
         <motion.div 
-          className="absolute w-[100vw] h-[100vw] bg-[#F59E0B]/30 rounded-full blur-[100px]"
-          animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0.5, 0.2] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
+          className="absolute w-[100vw] h-[100vw] bg-[#F59E0B]/20 rounded-full blur-[60px]"
+          animate={{ opacity: [0.1, 0.3, 0.1] }}
+          transition={{ duration: 2.5, repeat: Infinity }}
         />
       </div>
 
       {/* Core Logo Enclosed in a Circle with Axial Rotation */}
       <motion.div
-        initial={{ rotate: 0, scale: 0.8, opacity: 0 }}
-        animate={{ rotate: 360, scale: 1, opacity: 1 }}
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ 
-          rotate: { duration: 10, ease: "linear", repeat: Infinity },
-          scale: { duration: 1, ease: "easeOut" },
+          scale: { duration: 0.8, ease: "easeOut" },
           opacity: { duration: 0.5 }
         }}
-        className="relative z-10 w-80 h-80 flex items-center justify-center"
+        className="relative z-10 w-80 h-80 flex items-center justify-center translate-z-0"
       >
         {/* The Circle Enclosure (Prison-like/Sun-like) */}
-        <div className="absolute inset-0 rounded-full border-[6px] border-yellow-500/50 shadow-[0_0_40px_rgba(255,215,0,0.4)] backdrop-blur-sm bg-white/5" />
-        <div className="absolute inset-2 rounded-full border-2 border-white/20" />
+        <div className="absolute inset-0 rounded-full border-[6px] border-yellow-500/50 shadow-lg backdrop-blur-sm bg-white/5" />
+        <div className="absolute inset-2 rounded-full border-2 border-white/10" />
         
         <img 
           src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" 
           alt="Zone Logo"
-          className="w-60 h-60 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.9)] mix-blend-multiply"
+          className="w-60 h-60 object-contain drop-shadow-xl mix-blend-multiply"
           style={{ 
             maskImage: 'radial-gradient(circle, black 55%, transparent 56%)',
             WebkitMaskImage: 'radial-gradient(circle, black 55%, transparent 56%)'
@@ -1659,7 +2042,7 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
-const PlantDiagnosis = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onClose: () => void, paidApiKey?: string | null }) => {
   const [source, setSource] = useState<'camera' | 'gallery' | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1729,11 +2112,17 @@ const PlantDiagnosis = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     setLoading(true);
     setResult(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = (paidApiKey && paidApiKey.trim().startsWith('AIza')) 
+        ? paidApiKey 
+        : process.env.GEMINI_API_KEY;
+        
+      const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-3-flash-preview";
       
-      const prompt = `قم بتحليل هذه الصورة لنبات زينة. 
-      إذا لم تكن الصورة لنبات زينة، اجعل isOrnamentalPlant خطأ.
+      const prompt = `قم بتحليل هذه الصورة وتعرف على النبات أولاً.
+      يجب أن يتضمن الرد اسم النبات بوضوح في حقل plantName.
+      إذا لم تكن الصورة لنبات زينة (Ornamental Plant)، اجعل isOrnamentalPlant خطأ.
+      أنا خبير متخصص فقط في نباتات الزينة.
       إذا كان النبات سليماً، اجعل isHealthy صح و diagnosis "سليم".
       إذا كان مصاباً، قم بتصنيف المرض بشكل عام (مثلاً: فطريات، حشرات، نقص مغذيات) واقترح دواءً عاماً وبديلاً بلدياً (طبيعياً) متاحاً في السودان.
       قدم نصائح للرعاية بشتلات الزينة في بيئة السودان (تجنب ذكر الربيع).
@@ -1754,6 +2143,7 @@ const PlantDiagnosis = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
           responseSchema: {
             type: Type.OBJECT,
             properties: {
+              plantName: { type: Type.STRING },
               isOrnamentalPlant: { type: Type.BOOLEAN },
               isHealthy: { type: Type.BOOLEAN },
               diagnosis: { type: Type.STRING },
@@ -1761,7 +2151,7 @@ const PlantDiagnosis = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
               localAlternative: { type: Type.STRING },
               careTips: { type: Type.ARRAY, items: { type: Type.STRING } }
             },
-            required: ["isOrnamentalPlant", "isHealthy", "diagnosis", "careTips"]
+            required: ["plantName", "isOrnamentalPlant", "isHealthy", "diagnosis", "careTips"]
           }
         }
       });
@@ -1838,18 +2228,32 @@ const PlantDiagnosis = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
           {result && (
             <div className="space-y-6">
               {image && (
-                <div className="w-full h-48 rounded-3xl overflow-hidden shadow-lg">
-                {image ? <img src={image} alt="Captured" className="w-full h-full object-cover" /> : null}
+                <div className="relative w-full h-48 rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
+                  <img src={image || null} alt="Captured" className="w-full h-full object-cover" />
+                  {result.plantName && (
+                    <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                      <p className="text-white font-black text-center text-lg">{result.plantName}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {!result.isOrnamentalPlant ? (
-                <div className="p-6 bg-red-50 rounded-3xl border border-red-100 flex items-center space-x-reverse space-x-4 text-red-900">
-                  <AlertTriangle size="8vw" />
-                  <p className="font-black">عذراً، أنا مصمم فقط للتشخيص العام لأمراض نباتات الزينة.</p>
+                <div className="p-6 bg-red-50 rounded-3xl border border-red-100 flex flex-col items-center text-center space-y-4 text-red-900">
+                  <AlertTriangle size="12vw" className="text-red-500" />
+                  <div className="space-y-2">
+                    <p className="font-black text-xl">تنبيه: هذا النبات ليس من نباتات الزينة</p>
+                    <p className="font-bold text-lg leading-relaxed">عذراً، أنا مخصص فقط لخدمة وتشخيص نباتات الزينة.</p>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">
+                  <div className="p-5 bg-green-50 rounded-3xl border border-green-100">
+                    <p className="text-center font-black text-green-900 text-lg">
+                      اسم النبات: <span className="text-green-600 underline decoration-green-200">{result.plantName}</span>
+                    </p>
+                  </div>
+
                   {result.isHealthy ? (
                     <div className="p-6 bg-green-50 rounded-3xl border border-green-100 flex items-center space-x-reverse space-x-4 text-green-900">
                       <CheckCircle size="8vw" />
@@ -1914,6 +2318,22 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent Arrow keys from potentially triggering unintended navigation if requested
+      if (['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        const target = e.target as HTMLElement;
+        if (target && target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
@@ -1930,8 +2350,37 @@ export default function App() {
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [showCartHint, setShowCartHint] = useState(false);
   const [isDiagnosisOpen, setIsDiagnosisOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const paidApiKey = useMemo(() => {
+    if (data.length === 0) return null;
+    const keys = Object.keys(data[0]);
+    if (keys.length < 8) return null;
+    const h1Value = keys[7]; // Cell H1 is the 8th column header
+    return h1Value && h1Value.startsWith('AIza') ? h1Value : null;
+  }, [data]);
+
+  const notifications = useMemo(() => {
+    if (data.length === 0) return [];
+    // Assuming keys are in order of columns A, B, C...
+    const keys = Object.keys(data[0]);
+    if (keys.length < 8) return [];
+    
+    // Column H is Index 7. We take non-empty cells from Column H.
+    // Cell H2 corresponds to data[0][keys[7]]
+    return data
+      .filter(row => {
+        const msg = row[keys[7]];
+        return msg && msg.toString().trim() !== '';
+      })
+      .map(row => ({
+        text: row[keys[7]],
+        bg: row[keys[8]] || '#fef3c7', // Column I for background (fallback to cream)
+        color: row[keys[9]] || '#78350f' // Column J for font color (fallback to brown)
+      }));
+  }, [data]);
 
   const normalize = (text: string) => {
     if (!text) return '';
@@ -2082,9 +2531,7 @@ export default function App() {
     const newCart = [...cart];
     newCart.splice(index, 1);
     setCart(newCart);
-    if (newCart.length < 12) {
-      setIsLocked(false);
-    }
+    
     setNotification({
       message: "تم حذف المنتج من السلة",
       type: 'info'
@@ -2116,44 +2563,19 @@ export default function App() {
   };
 
   const addToCart = (item: any) => {
-    if (cart.length >= 12) {
-      setNotification({
-        message: "وصلت إلى الحد الأقصى (12 منتجاً). يرجى إرسال هذه الفاتورة أولاً لتتمكن من بدء طلب فاتورة جديدة.",
-        type: 'error'
-      });
-      return;
-    }
-
     const newCart = [...cart, item];
     setCart(newCart);
     setIsCartInflating(true);
     setTimeout(() => setIsCartInflating(false), 500);
 
-    if (newCart.length === 12) {
-      setIsLocked(true);
-      if (drumLockAudio.current) {
-        drumLockAudio.current.currentTime = 0;
-        drumLockAudio.current.play().catch(e => console.log("Drum lock play failed:", e));
-      }
-      // Strong vibration simulation
-      document.body.classList.add('animate-shake');
-      setTimeout(() => document.body.classList.remove('animate-shake'), 500);
-
-      setNotification({
-        message: "وصلت إلى الحد الأقصى (12 منتجاً). يرجى مراجعة السلة أولاً لتتمكن من إصدار الفاتورة.",
-        type: 'info'
-      });
-      setTimeout(() => setIsCartDrawerOpen(true), 1500);
-    } else {
-      setNotification({
-        message: "تمت إضافة المنتج بنجاح. يمكنك مراجعة، تعديل، أو حذف محتويات السلة الآن.",
-        type: 'success'
-      });
-      // Clear success notification after 3 seconds
-      setTimeout(() => {
-        setNotification(prev => prev?.type === 'success' ? null : prev);
-      }, 3000);
-    }
+    setNotification({
+      message: "تمت إضافة المنتج بنجاح. يمكنك مراجعة، تعديل، أو حذف محتويات السلة الآن.",
+      type: 'success'
+    });
+    // Clear success notification after 3 seconds
+    setTimeout(() => {
+      setNotification(prev => prev?.type === 'success' ? null : prev);
+    }, 3000);
   };
 
   // Filtering Logic
@@ -2709,10 +3131,6 @@ export default function App() {
           setShowSuccess(true);
           setCart([]);
           setIsLocked(false);
-          setNotification({
-            message: "تم توثيق طلبك بنجاح في أرشيف زون المشفر.. شتلاتك في طريقها للحياة.",
-            type: 'success'
-          });
         }}
       />
 
@@ -2720,9 +3138,15 @@ export default function App() {
         <SuccessScreen onBackToHome={() => setShowSuccess(false)} />
       )}
 
+      <NotificationModal 
+        isOpen={isNotificationOpen} 
+        onClose={() => setIsNotificationOpen(false)} 
+        notifications={notifications} 
+      />
       <PlantDiagnosis 
         isOpen={isDiagnosisOpen}
         onClose={() => setIsDiagnosisOpen(false)}
+        paidApiKey={paidApiKey}
       />
 
       {!showSplash && !showRegistration && (
@@ -2877,8 +3301,20 @@ export default function App() {
                 </AnimatePresence>
               </motion.div>
 
-              <button className="text-white p-2 hover:bg-white/10 rounded-full transition-colors">
+              <button 
+                onClick={() => setIsNotificationOpen(true)}
+                className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
+              >
                 <Bell size={26} />
+                {notifications.length > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#042f22] shadow-lg z-10"
+                  >
+                    {notifications.length}
+                  </motion.span>
+                )}
               </button>
             </div>
           </header>

@@ -1,0 +1,8 @@
+{
+	"appId": "com.zoon.agri.app",
+	"appName": "Zone App",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	}
+}
