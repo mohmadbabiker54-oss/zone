@@ -24,11 +24,25 @@ android {
             keyPassword 'zone2026'
         }
     }
+    def localProperties = new Properties()
+    def localPropertiesFile = rootProject.file('local.properties')
+    if (localPropertiesFile.exists()) {
+        localProperties.load(new FileInputStream(localPropertiesFile))
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            
+            // Injecting Secrets into BuildConfig
+            buildConfigField "String", "GEMINI_API_KEY", "\"${localProperties.getProperty('GEMINI_API_KEY')}\""
+            buildConfigField "String", "DRIVE_SCRIPT_URL", "\"${localProperties.getProperty('DRIVE_SCRIPT_URL')}\""
+        }
+        debug {
+            buildConfigField "String", "GEMINI_API_KEY", "\"${localProperties.getProperty('GEMINI_API_KEY')}\""
+            buildConfigField "String", "DRIVE_SCRIPT_URL", "\"${localProperties.getProperty('DRIVE_SCRIPT_URL')}\""
         }
     }
 }
