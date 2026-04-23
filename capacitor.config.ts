@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.zoon.agri.app',
-  appName: 'Zone App',
+  appName: 'زون للخدمات الزراعية',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

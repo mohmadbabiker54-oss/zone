@@ -30,10 +30,30 @@ android {
         localProperties.load(new FileInputStream(localPropertiesFile))
     }
 
+    task generateReleaseKeystore(type: Exec) {
+        def keystoreFile = file('release-key.jks')
+        workingDir projectDir
+        commandLine 'keytool', '-genkey', '-v', '-keystore', 'release-key.jks', 
+                    '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000', 
+                    '-alias', 'zone-key', '-storepass', 'zone2026', '-keypass', 'zone2026', 
+                    '-dname', 'CN=Zone, OU=Agri, O=Kilimanjaro, L=Omdurman, S=Khartoum, C=SD'
+        onlyIf { !keystoreFile.exists() }
+    }
+
+    // Automatically generate keystore if missing before build
+    afterEvaluate {
+        if (tasks.findByName('generateReleaseKeystore')) {
+            tasks.matching { it.name.startsWith('bundle') || it.name.startsWith('assemble') }.all {
+                dependsOn generateReleaseKeystore
+            }
+        }
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             
             // Injecting Secrets into BuildConfig

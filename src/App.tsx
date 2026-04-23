@@ -16,6 +16,11 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// --- GLOBAL CONFIGURATION (ZONE APP ENGINE) ---
+const SYSTEM_API_KEY = 'AIzaSyDemTNqHM4F4beipfXbUT__3mvbgRVCmus';
+const SYSTEM_GAS_URL = 'https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec';
+// ----------------------------------------------
+
 import { 
   saveProducts, 
   getProducts, 
@@ -887,21 +892,19 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
             // It's likely the IP-based location in Shendi, Port Sudan or just bad signal
             setMarkerPos([15.6550, 32.4850]); // Residential Omdurman / Nile Area
             setMapZoom(16);
-            setAccuracyWarning(acc > 500 
-              ? `إشارة الـ GPS غير مستقرة (${Math.round(acc)}م). تم وضع الدبوس تقريبياً في أم درمان؛ يرجى تحريكه بدقة.` 
-              : "تم رصد موقع خارج الولاية (شندي/بورتسودان)؛ تم إعادتك لأم درمان لضمان دقة التوصيل.");
+            setAccuracyWarning("إشارة الموقع تقريبية جداً. يرجى سحب الدبوس ووضعه يدوياً (أمام باب المكان) الذي تود الاستلام فيه.");
           } else if (acc <= 50) {
             // High precision auto-lock (Neighborhood level found)
             setMarkerPos([lat, lng]);
             setMapZoom(18); 
             setCurrentLocation(loc);
-            setAccuracyWarning("تم العثور عليك بدقة 50 متر. فضلاً، اسحب الدبوس الآن ليكون فوق باب منزلك بدقة 1 متر.");
+            setAccuracyWarning("رائع! تم تحديد جيرانك بدقة؛ يرجى الآن سحب الدبوس (أمام بابك) تماماً لضمان وصول المندوب.");
           } else {
             // Moderate lock
             setMarkerPos([lat, lng]);
             setMapZoom(17); 
             setCurrentLocation(loc);
-            setAccuracyWarning("تم تحديد موقعك التقريبي؛ يرجى سحب الدبوس فوق منزلك بدقة متناهية.");
+            setAccuracyWarning("تم العثور على موقعك التقريبي؛ يرجى التأكد من سحب الدبوس ووضعه (أمام باب الاستلام) بدقة.");
           }
         } else if (loc.error) {
           setMarkerPos([15.6550, 32.4850]);
@@ -1026,7 +1029,7 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
         
         // Send to Google Apps Script (doPost)
         try {
-          const response = await fetch('https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec', {
+          const response = await fetch(SYSTEM_GAS_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'text/plain;charset=utf-8',
@@ -1191,6 +1194,13 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
           {/* Location Selection Section */}
           <div className="w-full space-y-4">
             <div className="bg-black/40 p-4 rounded-3xl border-2 border-yellow-600/20">
+              <div className="bg-blue-600/20 border border-blue-500/50 p-4 rounded-2xl mb-4 flex items-start space-x-reverse space-x-3 shadow-lg backdrop-blur-sm">
+                <Map className="text-blue-400 shrink-0 mt-0.5" size={24} />
+                <p className="text-white text-sm font-black leading-relaxed">
+                  تنبيه التوصيل: يرجى سحب الدبوس على الخريطة ووضعه بدقة متناهية "أمام باب المنزل" أو المكان المخصص للاستلام لضمان وصول المندوب إليك دون تأخير.
+                </p>
+              </div>
+
               <div className="flex items-center justify-between mb-4">
                 <div className="text-right">
                   <h4 className="text-white font-black text-lg flex items-center space-x-reverse space-x-2">
@@ -1308,10 +1318,10 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 p-3 bg-red-600/20 border border-red-600/50 rounded-xl flex items-start space-x-reverse space-x-3"
+                  className="mt-3 p-3 bg-blue-600/20 border border-blue-600/50 rounded-xl flex items-start space-x-reverse space-x-3"
                 >
-                  <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={16} />
-                  <p className="text-red-400 text-[10px] font-black leading-relaxed">
+                  <MapPin className="text-blue-500 shrink-0 mt-0.5" size={16} />
+                  <p className="text-blue-400 text-[10px] font-black leading-relaxed">
                     {accuracyWarning}
                   </p>
                 </motion.div>
@@ -2114,18 +2124,16 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
     try {
       const apiKey = (paidApiKey && paidApiKey.trim().startsWith('AIza')) 
         ? paidApiKey 
-        : process.env.GEMINI_API_KEY;
+        : SYSTEM_API_KEY;
         
       const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-3-flash-preview";
       
       const prompt = `قم بتحليل هذه الصورة وتعرف على النبات أولاً.
       يجب أن يتضمن الرد اسم النبات بوضوح في حقل plantName.
-      إذا لم تكن الصورة لنبات زينة (Ornamental Plant)، اجعل isOrnamentalPlant خطأ.
-      أنا خبير متخصص فقط في نباتات الزينة.
       إذا كان النبات سليماً، اجعل isHealthy صح و diagnosis "سليم".
       إذا كان مصاباً، قم بتصنيف المرض بشكل عام (مثلاً: فطريات، حشرات، نقص مغذيات) واقترح دواءً عاماً وبديلاً بلدياً (طبيعياً) متاحاً في السودان.
-      قدم نصائح للرعاية بشتلات الزينة في بيئة السودان (تجنب ذكر الربيع).
+      قدم نصائح للرعاية بالنبات في بيئة السودان (تجنب ذكر الربيع).
       يجب أن يكون الرد باللغة العربية الفصحى المفهومة في السودان.`;
 
       const response = await ai.models.generateContent({
@@ -2144,14 +2152,13 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
             type: Type.OBJECT,
             properties: {
               plantName: { type: Type.STRING },
-              isOrnamentalPlant: { type: Type.BOOLEAN },
               isHealthy: { type: Type.BOOLEAN },
               diagnosis: { type: Type.STRING },
               generalMedicine: { type: Type.STRING },
               localAlternative: { type: Type.STRING },
               careTips: { type: Type.ARRAY, items: { type: Type.STRING } }
             },
-            required: ["plantName", "isOrnamentalPlant", "isHealthy", "diagnosis", "careTips"]
+            required: ["plantName", "isHealthy", "diagnosis", "careTips"]
           }
         }
       });
@@ -2238,64 +2245,54 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
                 </div>
               )}
 
-              {!result.isOrnamentalPlant ? (
-                <div className="p-6 bg-red-50 rounded-3xl border border-red-100 flex flex-col items-center text-center space-y-4 text-red-900">
-                  <AlertTriangle size="12vw" className="text-red-500" />
-                  <div className="space-y-2">
-                    <p className="font-black text-xl">تنبيه: هذا النبات ليس من نباتات الزينة</p>
-                    <p className="font-bold text-lg leading-relaxed">عذراً، أنا مخصص فقط لخدمة وتشخيص نباتات الزينة.</p>
-                  </div>
+              <div className="space-y-6">
+                <div className="p-5 bg-green-50 rounded-3xl border border-green-100">
+                  <p className="text-center font-black text-green-900 text-lg">
+                    اسم النبات: <span className="text-green-600 underline decoration-green-200">{result.plantName}</span>
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="p-5 bg-green-50 rounded-3xl border border-green-100">
-                    <p className="text-center font-black text-green-900 text-lg">
-                      اسم النبات: <span className="text-green-600 underline decoration-green-200">{result.plantName}</span>
-                    </p>
-                  </div>
 
-                  {result.isHealthy ? (
-                    <div className="p-6 bg-green-50 rounded-3xl border border-green-100 flex items-center space-x-reverse space-x-4 text-green-900">
-                      <CheckCircle size="8vw" />
-                      <p className="font-black text-lg">ألف مبروك، النبات بصحة جيدة وهو سليم.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="p-6 bg-orange-50 rounded-3xl border border-orange-100 space-y-2">
-                        <h3 className="font-black text-orange-900 flex items-center space-x-reverse space-x-2">
-                          <AlertTriangle size={20} />
-                          <span>التشخيص: {result.diagnosis}</span>
-                        </h3>
-                        <div className="space-y-3">
-                          <p className="text-sm font-bold text-orange-800">
-                            <span className="font-black">العلاج المقترح:</span> {result.generalMedicine}
+                {result.isHealthy ? (
+                  <div className="p-6 bg-green-50 rounded-3xl border border-green-100 flex items-center space-x-reverse space-x-4 text-green-900">
+                    <CheckCircle size="8vw" />
+                    <p className="font-black text-lg">ألف مبروك، النبات بصحة جيدة وهو سليم.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-6 bg-orange-50 rounded-3xl border border-orange-100 space-y-2">
+                      <h3 className="font-black text-orange-900 flex items-center space-x-reverse space-x-2">
+                        <AlertTriangle size={20} />
+                        <span>التشخيص: {result.diagnosis}</span>
+                      </h3>
+                      <div className="space-y-3">
+                        <p className="text-sm font-bold text-orange-800">
+                          <span className="font-black">العلاج المقترح:</span> {result.generalMedicine}
+                        </p>
+                        {result.localAlternative && (
+                          <p className="text-sm font-bold text-green-800 bg-green-100/50 p-3 rounded-xl">
+                            <span className="font-black">البديل البلدي (في حال عدم توفر الدواء):</span> {result.localAlternative}
                           </p>
-                          {result.localAlternative && (
-                            <p className="text-sm font-bold text-green-800 bg-green-100/50 p-3 rounded-xl">
-                              <span className="font-black">البديل البلدي (في حال عدم توفر الدواء):</span> {result.localAlternative}
-                            </p>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <h3 className="font-black text-green-900 flex items-center space-x-reverse space-x-2">
-                      <Leaf size={20} />
-                      <span>نصائح للرعاية بشتلات الزينة:</span>
-                    </h3>
-                    <ul className="space-y-2">
-                      {result.careTips.map((tip: string, i: number) => (
-                        <li key={i} className="flex items-start space-x-reverse space-x-2 text-sm font-bold text-gray-700">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5 flex-shrink-0" />
-                          <span>{tip}</span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
+                )}
+
+                <div className="space-y-3">
+                  <h3 className="font-black text-green-900 flex items-center space-x-reverse space-x-2">
+                    <Leaf size={20} />
+                    <span>نصائح للرعاية بالنبات:</span>
+                  </h3>
+                  <ul className="space-y-2">
+                    {result.careTips.map((tip: string, i: number) => (
+                      <li key={i} className="flex items-start space-x-reverse space-x-2 text-sm font-bold text-gray-700">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5 flex-shrink-0" />
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              )}
+              </div>
 
               <button 
                 onClick={() => { setImage(null); setResult(null); setSource(null); }}
@@ -2472,14 +2469,12 @@ export default function App() {
         }
 
         // 2. Check for changes in Google Sheets
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec';
-        
-        // Try to get the last known version
-        const lastVersion = await getMetadata('data_version');
-        
         try {
+          // Try to get the last known version
+          const lastVersion = await getMetadata('data_version');
+          
           // Fetch with a check parameter
-          const response = await fetch(`${GAS_URL}?action=check&v=${lastVersion || '0'}`, {
+          const response = await fetch(`${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}`, {
             signal: AbortSignal.timeout(5000) // 5 second timeout for the check
           });
           
@@ -2493,7 +2488,7 @@ export default function App() {
           }
 
           // 3. If changed or no check possible, fetch the data
-          const fullResponse = await fetch(GAS_URL, {
+          const fullResponse = await fetch(SYSTEM_GAS_URL, {
             signal: AbortSignal.timeout(15000) // 15 second timeout for full fetch
           });
           
