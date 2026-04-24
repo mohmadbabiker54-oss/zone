@@ -1194,23 +1194,30 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
 
           {/* Location Selection Section */}
           <div className="w-full space-y-4">
-            <div className="bg-black/40 p-4 rounded-3xl border-2 border-yellow-600/20">
-              <div className="bg-blue-600/20 border border-blue-500/50 p-4 rounded-2xl mb-4 flex items-start space-x-reverse space-x-3 shadow-lg backdrop-blur-sm">
-                <Map className="text-blue-400 shrink-0 mt-0.5" size={24} />
-                <p className="text-white text-sm font-black leading-relaxed">
-                  تنبيه التوصيل: يرجى سحب الدبوس على الخريطة ووضعه بدقة متناهية "أمام باب المنزل" أو المكان المخصص للاستلام لضمان وصول المندوب إليك دون تأخير.
-                </p>
+            <div className="bg-black/40 p-4 rounded-3xl border-2 border-yellow-600/20 shadow-2xl relative overflow-hidden">
+              <div className="absolute inset-0 bg-blue-600/5 pointer-events-none" />
+              
+              <div className="bg-blue-600/30 border-2 border-blue-400 p-5 rounded-2xl mb-4 flex items-start space-x-reverse space-x-4 shadow-[0_0_30px_rgba(37,99,235,0.2)] backdrop-blur-md relative z-10">
+                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shrink-0 border-2 border-white/20 animate-pulse">
+                  <Map className="text-white" size={24} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-white text-base font-black leading-tight">هام جداً لضمان التوصيل:</p>
+                  <p className="text-blue-100 text-xs font-bold leading-relaxed">
+                    يجب عليك سحب "الدبوس الأحمر" على الخريطة ووضعه يدوياً <span className="text-yellow-400 underline">(أمام باب منزلك)</span> تماماً. المندوب سيعتمد على هذا الموقع الجغرافي للوصول إليك.
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 px-2">
                 <div className="text-right">
                   <h4 className="text-white font-black text-lg flex items-center space-x-reverse space-x-2">
                     <Globe size={20} className={mapMode === 'satellite' ? 'text-blue-400' : 'text-yellow-500'} />
-                    <span>تحديد موقع التوصيل بدقة فائقـة</span>
+                    <span>تحديد موقع باب المنزل بدقة</span>
                   </h4>
-                  <p className="text-yellow-500/60 text-xs font-bold">نمط الرؤية: {mapMode === 'satellite' ? 'قمر صناعي (Satellite)' : 'خريطة طرق (Standard)'}</p>
+                  <p className="text-yellow-500/60 text-[10px] font-bold">يرجى تحريك الخريطة أو سحب الدبوس</p>
                 </div>
-                {markerPos && (
+                {markerPos && markerPos.length === 2 && (
                    <div className="bg-green-500/10 px-3 py-1 rounded-full border border-green-500/30">
                      <span className="text-green-500 text-[10px] font-black tracking-widest font-mono">
                        {markerPos[0].toFixed(6)}, {markerPos[1].toFixed(6)}
@@ -1220,7 +1227,7 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
               </div>
 
               {/* Interactive Map */}
-              <div className="w-full h-[450px] rounded-2xl overflow-hidden border-2 border-white/10 relative z-0">
+              <div className="w-full h-[450px] rounded-2xl overflow-hidden border-2 border-white/20 relative z-0 shadow-inner bg-gray-900">
                 <MapContainer center={markerPos} zoom={mapZoom} zoomControl={false} style={{ height: '100%', width: '100%' }}>
                   {mapMode === 'standard' ? (
                     <TileLayer
@@ -1235,17 +1242,19 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                   )}
                   <MapController center={markerPos} zoom={mapZoom} />
                   <MapEvents onMapClick={handleManualMapUpdate} />
-                  <Marker 
-                    position={markerPos} 
-                    draggable={true}
-                    eventHandlers={{
-                      dragend: (e) => {
-                        const marker = e.target;
-                        const pos = marker.getLatLng();
-                        handleManualMapUpdate(pos.lat, pos.lng);
-                      },
-                    }}
-                  />
+                  {markerPos && markerPos.length === 2 && (
+                    <Marker 
+                      position={markerPos} 
+                      draggable={true}
+                      eventHandlers={{
+                        dragend: (e) => {
+                          const marker = e.target;
+                          const pos = marker.getLatLng();
+                          handleManualMapUpdate(pos.lat, pos.lng);
+                        },
+                      }}
+                    />
+                  )}
                 </MapContainer>
 
                 {/* Custom Map Controls */}
@@ -2235,71 +2244,82 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
 
           {result && (
             <div className="space-y-6">
-              {image && (
-                <div className="relative w-full h-48 rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
-                  <img src={image || null} alt="Captured" className="w-full h-full object-cover" />
-                  {result.plantName && (
-                    <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                      <p className="text-white font-black text-center text-lg">{result.plantName}</p>
+              {result.error ? (
+                <div className="p-8 bg-red-50 rounded-3xl border border-red-100 flex flex-col items-center text-center space-y-4">
+                  <AlertTriangle size={64} className="text-red-500" />
+                  <p className="font-black text-red-900 text-lg">{result.error}</p>
+                </div>
+              ) : (
+                <>
+                  {image && (
+                    <div className="relative w-full h-48 rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
+                      <img src={image} alt="Captured" className="w-full h-full object-cover" />
+                      {result.plantName && (
+                        <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                          <p className="text-white font-black text-center text-lg">{result.plantName}</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
 
-              <div className="space-y-6">
-                <div className="p-5 bg-green-50 rounded-3xl border border-green-100">
-                  <p className="text-center font-black text-green-900 text-lg">
-                    اسم النبات: <span className="text-green-600 underline decoration-green-200">{result.plantName}</span>
-                  </p>
-                </div>
-
-                {result.isHealthy ? (
-                  <div className="p-6 bg-green-50 rounded-3xl border border-green-100 flex items-center space-x-reverse space-x-4 text-green-900">
-                    <CheckCircle size="8vw" />
-                    <p className="font-black text-lg">ألف مبروك، النبات بصحة جيدة وهو سليم.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-6 bg-orange-50 rounded-3xl border border-orange-100 space-y-2">
-                      <h3 className="font-black text-orange-900 flex items-center space-x-reverse space-x-2">
-                        <AlertTriangle size={20} />
-                        <span>التشخيص: {result.diagnosis}</span>
-                      </h3>
-                      <div className="space-y-3">
-                        <p className="text-sm font-bold text-orange-800">
-                          <span className="font-black">العلاج المقترح:</span> {result.generalMedicine}
-                        </p>
-                        {result.localAlternative && (
-                          <p className="text-sm font-bold text-green-800 bg-green-100/50 p-3 rounded-xl">
-                            <span className="font-black">البديل البلدي (في حال عدم توفر الدواء):</span> {result.localAlternative}
-                          </p>
-                        )}
-                      </div>
+                  <div className="space-y-6">
+                    <div className="p-5 bg-green-50 rounded-3xl border border-green-100">
+                      <p className="text-center font-black text-green-900 text-lg">
+                        اسم النبات: <span className="text-green-600 underline decoration-green-200">{result.plantName || 'غير معروف'}</span>
+                      </p>
                     </div>
-                  </div>
-                )}
 
-                <div className="space-y-3">
-                  <h3 className="font-black text-green-900 flex items-center space-x-reverse space-x-2">
-                    <Leaf size={20} />
-                    <span>نصائح للرعاية بالنبات:</span>
-                  </h3>
-                  <ul className="space-y-2">
-                    {result.careTips.map((tip: string, i: number) => (
-                      <li key={i} className="flex items-start space-x-reverse space-x-2 text-sm font-bold text-gray-700">
-                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5 flex-shrink-0" />
-                        <span>{tip}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+                    {result.isHealthy ? (
+                      <div className="p-6 bg-green-50 rounded-3xl border border-green-100 flex items-center space-x-reverse space-x-4 text-green-900">
+                        <CheckCircle size={32} className="shrink-0" />
+                        <p className="font-black text-lg">ألف مبروك، النبات بصحة جيدة وهو سليم.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-6 bg-orange-50 rounded-3xl border border-orange-100 space-y-2">
+                          <h3 className="font-black text-orange-900 flex items-center space-x-reverse space-x-2">
+                            <AlertTriangle size={20} />
+                            <span>التشخيص: {result.diagnosis || 'لم يتم التحديد'}</span>
+                          </h3>
+                          <div className="space-y-3">
+                            <p className="text-sm font-bold text-orange-800">
+                              <span className="font-black">العلاج المقترح:</span> {result.generalMedicine || 'لا يوجد علاج محدد حالياً'}
+                            </p>
+                            {result.localAlternative && (
+                              <p className="text-sm font-bold text-green-800 bg-green-100/50 p-3 rounded-xl">
+                                <span className="font-black">البديل البلدي (في حال عدم توفر الدواء):</span> {result.localAlternative}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {result.careTips && result.careTips.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="font-black text-green-900 flex items-center space-x-reverse space-x-2">
+                          <Leaf size={20} />
+                          <span>نصائح للرعاية بالنبات:</span>
+                        </h3>
+                        <ul className="space-y-2">
+                          {result.careTips.map((tip: string, i: number) => (
+                            <li key={i} className="flex items-start space-x-reverse space-x-2 text-sm font-bold text-gray-700">
+                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5 flex-shrink-0" />
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               <button 
                 onClick={() => { setImage(null); setResult(null); setSource(null); }}
                 className="w-full h-14 bg-green-600 text-white rounded-2xl font-black shadow-lg hover:bg-green-700 transition-all"
               >
-                تشخيص جديد
+                تحديث / تشخيص جديد
               </button>
             </div>
           )}
