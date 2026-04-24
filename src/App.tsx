@@ -99,6 +99,7 @@ import {
   Globe,
   Compass,
   Map,
+  MapPin,
   Anchor,
   Bike,
   Car,
