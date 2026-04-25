@@ -2073,8 +2073,13 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
   const saveUserKey = () => {
     if (userKey.trim().startsWith('AIza')) {
       localStorage.setItem('custom_gemini_key', userKey.trim());
-      alert('تم حفظ المفتاح بنجاح! جرب التحليل الآن.');
       setShowKeyInput(false);
+      // إذا كانت هناك صورة موجودة مسبقاً، ابدأ التحليل فوراً باستخدام المفتاح الجديد
+      if (image) {
+        analyzeImage(image);
+      } else {
+        alert('تم حفظ المفتاح بنجاح! يرجى اختيار صورة للبدء.');
+      }
     } else {
       alert('يرجى إدخال مفتاح API صحيح يبدأ بـ AIza');
     }
