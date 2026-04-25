@@ -2148,74 +2148,64 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
   const analyzeImage = async (base64Image: string) => {
     setLoading(true);
     setResult(null);
-    console.log("Starting image analysis... Image data length:", base64Image.length);
     try {
       const storedKey = localStorage.getItem('custom_gemini_key');
-      const apiKey = storedKey || (paidApiKey && paidApiKey.trim().startsWith('AIza') ? paidApiKey : SYSTEM_API_KEY);
-        
-      if (!apiKey) {
-        throw new Error("Gemini API key is missing.");
-      }
+      const apiKeyToUse = storedKey || (paidApiKey && paidApiKey.trim().startsWith('AIza') ? paidApiKey : SYSTEM_API_KEY);
+      
+      if (!apiKeyToUse) throw new Error("Gemini API key is missing.");
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: apiKeyToUse });
       const model = "gemini-1.5-flash";
       
-      const prompt = `قم بتحليل هذه الصورة وتعرف على النبات أولاً.
-      يجب أن يتضمن الرد اسم النبات بوضوح في حقل plantName.
-      إذا كان النبات سليماً، اجعل isHealthy صح و diagnosis "سليم".
-      إذا كان مصاباً، قم بتصنيف المرض بشكل عام (مثلاً: فطريات، حشرات، نقص مغذيات) واقترح دواءً عاماً وبديلاً بلدياً (طبيعياً) متاحاً في السودان.
-      قدم نصائح للرعاية بالنبات في بيئة السودان (تجنب ذكر الربيع).
-      يجب أن يكون الرد باللغة العربية الفصحى المفهومة في السودان.`;
+      const prompt = `قم بتحليل هذه الصورة ونفذ المهام التالية:
+      1. تعرف على نوع النبات.
+      2. حدد هل النبات سليم أم مصاب؟
+      3. إذا كان مصاباً، اذكر التشخيص العام (فطري، حشري، إلخ) والعلاج الكيميائي والبلدي المتوفر في السودان.
+      4. قدم نصائح رعاية تناسب جو السودان.
+      يجب أن يكون الرد بتنسيق JSON حصراً كالتالي:
+      { "plantName": "اسم النبات", "isHealthy": true/false, "diagnosis": "سليم أو اسم المرض", "generalMedicine": "اسم الدواء", "localAlternative": "البديل السوداني", "careTips": ["نصيحة 1", "نصيحة 2"] }`;
 
-      console.log("Sending request to Gemini API with model:", model);
-      
       const response = await ai.models.generateContent({
         model,
         contents: [
           {
             parts: [
               { text: prompt },
-              { inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" } }
+              {
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: base64Image.includes(',') ? base64Image.split(',')[1] : base64Image
+                }
+              }
             ]
           }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              plantName: { type: Type.STRING },
-              isHealthy: { type: Type.BOOLEAN },
-              diagnosis: { type: Type.STRING },
-              generalMedicine: { type: Type.STRING },
-              localAlternative: { type: Type.STRING },
-              careTips: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ["plantName", "isHealthy", "diagnosis", "careTips"]
-          }
-        }
+        ]
       });
 
-      console.log("API response received:", response);
       if (!response || !response.text) {
-        throw new Error("Empty response from Gemini API");
+        throw new Error("No response text from AI");
       }
 
-      const data = JSON.parse(response.text.trim());
-      console.log("Parsed analysis data:", data);
+      let text = response.text;
+      
+      // Clean up JSON if model adds markdown blocks
+      if (text.includes("```json")) {
+        text = text.split("```json")[1].split("```")[0];
+      } else if (text.includes("```")) {
+        text = text.split("```")[1].split("```")[0];
+      }
+
+      const data = JSON.parse(text.trim());
       setResult(data);
     } catch (err) {
-      console.error("Error analyzing image:", err);
+      console.error("Analysis error:", err);
       let errorMessage = "عذراً، حدث خطأ أثناء تحليل الصورة.";
-      if (err instanceof Error) {
-        console.log("Detailed Error:", err.message);
-        if (err.message.includes("403") || err.message.includes("permission") || err.message.includes("API key")) {
-          errorMessage = "خطأ في صلاحية الوصول للذكاء الاصطناعي (API Key). يرجى التأكد من أن منطقتك مدعومة.";
-        } else if (err.message.includes("model")) {
-          errorMessage = "الموديل المستخدم غير متوفر حالياً. يرجى المحاولة لاحقاً.";
-        }
+      let detail = err instanceof Error ? err.message : String(err);
+      
+      if (detail.includes("403") || detail.includes("permission")) {
+        errorMessage = "تم رفض الوصول (403). يرجى التأكد من أن مفتاح الـ API صحيح وأن بلدك مدعوم (أو استخدم VPN).";
       }
-      setResult({ error: errorMessage });
+      setResult({ error: errorMessage, debug: detail });
     } finally {
       setLoading(false);
     }
@@ -2287,12 +2277,37 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
                   <AlertTriangle size={64} className="text-red-500" />
                   <p className="font-black text-red-900 text-lg">{result.error}</p>
                   
+                  {result.debug && (
+                    <div className="mt-2 p-2 bg-gray-100 rounded-lg border border-gray-200">
+                      <p className="text-[10px] font-mono text-gray-500 overflow-auto max-h-20">
+                        Error Detail: {result.debug}
+                      </p>
+                    </div>
+                  )}
+
+                  {localStorage.getItem('custom_gemini_key') && (
+                    <div className="flex flex-col items-center space-y-2 mt-2">
+                      <p className="text-[10px] text-blue-600 font-bold bg-blue-50 p-2 rounded-lg">
+                        مفتاحك الخاص نشط حالياً: {localStorage.getItem('custom_gemini_key')?.substring(0, 8)}...
+                      </p>
+                      <button 
+                        onClick={() => {
+                          localStorage.removeItem('custom_gemini_key');
+                          window.location.reload();
+                        }}
+                        className="text-[10px] text-red-500 underline"
+                      >
+                        مسح المفتاح والعودة للمفتاح الافتراضي
+                      </button>
+                    </div>
+                  )}
+
                   {!showKeyInput ? (
                     <button 
                       onClick={() => setShowKeyInput(true)}
-                      className="text-blue-600 font-bold underline text-sm"
+                      className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black shadow-lg"
                     >
-                      هل تملك مفتاح API خاص بك؟ اضغط هنا لإدخاله
+                      {localStorage.getItem('custom_gemini_key') ? 'تغيير مفتاح API' : 'إدخال مفتاح API خاص'}
                     </button>
                   ) : (
                     <div className="w-full space-y-3 p-4 bg-white rounded-2xl border border-gray-200">
