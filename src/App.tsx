@@ -2067,6 +2067,18 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [userKey, setUserKey] = useState('');
+
+  const saveUserKey = () => {
+    if (userKey.trim().startsWith('AIza')) {
+      localStorage.setItem('custom_gemini_key', userKey.trim());
+      alert('تم حفظ المفتاح بنجاح! جرب التحليل الآن.');
+      setShowKeyInput(false);
+    } else {
+      alert('يرجى إدخال مفتاح API صحيح يبدأ بـ AIza');
+    }
+  };
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2133,16 +2145,15 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
     setResult(null);
     console.log("Starting image analysis... Image data length:", base64Image.length);
     try {
-      const apiKey = (paidApiKey && paidApiKey.trim().startsWith('AIza')) 
-        ? paidApiKey 
-        : SYSTEM_API_KEY;
+      const storedKey = localStorage.getItem('custom_gemini_key');
+      const apiKey = storedKey || (paidApiKey && paidApiKey.trim().startsWith('AIza') ? paidApiKey : SYSTEM_API_KEY);
         
       if (!apiKey) {
         throw new Error("Gemini API key is missing.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-flash-latest";
+      const model = "gemini-1.5-flash";
       
       const prompt = `قم بتحليل هذه الصورة وتعرف على النبات أولاً.
       يجب أن يتضمن الرد اسم النبات بوضوح في حقل plantName.
@@ -2270,6 +2281,32 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
                 <div className="p-8 bg-red-50 rounded-3xl border border-red-100 flex flex-col items-center text-center space-y-4">
                   <AlertTriangle size={64} className="text-red-500" />
                   <p className="font-black text-red-900 text-lg">{result.error}</p>
+                  
+                  {!showKeyInput ? (
+                    <button 
+                      onClick={() => setShowKeyInput(true)}
+                      className="text-blue-600 font-bold underline text-sm"
+                    >
+                      هل تملك مفتاح API خاص بك؟ اضغط هنا لإدخاله
+                    </button>
+                  ) : (
+                    <div className="w-full space-y-3 p-4 bg-white rounded-2xl border border-gray-200">
+                      <p className="text-xs font-bold text-gray-500">أدخل مفتاح Gemini API (يبدأ بـ AIza):</p>
+                      <input 
+                        type="password"
+                        value={userKey}
+                        onChange={(e) => setUserKey(e.target.value)}
+                        className="w-full p-3 bg-gray-50 border rounded-xl text-center font-mono text-sm"
+                        placeholder="AIza..."
+                      />
+                      <button 
+                        onClick={saveUserKey}
+                        className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-sm"
+                      >
+                        حفظ المفتاح وتجربة التحليل
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
