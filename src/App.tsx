@@ -2131,13 +2131,18 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
   const analyzeImage = async (base64Image: string) => {
     setLoading(true);
     setResult(null);
+    console.log("Starting image analysis... Image data length:", base64Image.length);
     try {
       const apiKey = (paidApiKey && paidApiKey.trim().startsWith('AIza')) 
         ? paidApiKey 
         : SYSTEM_API_KEY;
         
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing.");
+      }
+
       const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-3-flash-preview";
+      const model = "gemini-flash-latest";
       
       const prompt = `قم بتحليل هذه الصورة وتعرف على النبات أولاً.
       يجب أن يتضمن الرد اسم النبات بوضوح في حقل plantName.
@@ -2146,6 +2151,8 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
       قدم نصائح للرعاية بالنبات في بيئة السودان (تجنب ذكر الربيع).
       يجب أن يكون الرد باللغة العربية الفصحى المفهومة في السودان.`;
 
+      console.log("Sending request to Gemini API with model:", model);
+      
       const response = await ai.models.generateContent({
         model,
         contents: [
@@ -2173,11 +2180,26 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
         }
       });
 
-      const data = JSON.parse(response.text || "{}");
+      console.log("API response received:", response);
+      if (!response || !response.text) {
+        throw new Error("Empty response from Gemini API");
+      }
+
+      const data = JSON.parse(response.text.trim());
+      console.log("Parsed analysis data:", data);
       setResult(data);
     } catch (err) {
       console.error("Error analyzing image:", err);
-      setResult({ error: "عذراً، حدث خطأ أثناء تحليل الصورة." });
+      let errorMessage = "عذراً، حدث خطأ أثناء تحليل الصورة.";
+      if (err instanceof Error) {
+        console.log("Detailed Error:", err.message);
+        if (err.message.includes("403") || err.message.includes("permission") || err.message.includes("API key")) {
+          errorMessage = "خطأ في صلاحية الوصول للذكاء الاصطناعي (API Key). يرجى التأكد من أن منطقتك مدعومة.";
+        } else if (err.message.includes("model")) {
+          errorMessage = "الموديل المستخدم غير متوفر حالياً. يرجى المحاولة لاحقاً.";
+        }
+      }
+      setResult({ error: errorMessage });
     } finally {
       setLoading(false);
     }
