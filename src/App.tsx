@@ -17,7 +17,7 @@ const DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 // --- GLOBAL CONFIGURATION (ZONE APP ENGINE) ---
-const SYSTEM_API_KEY = 'AIzaSyDemTNqHM4F4beipfXbUT__3mvbgRVCmus';
+const SYSTEM_API_KEY = '';
 const SYSTEM_GAS_URL = 'https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec';
 // ----------------------------------------------
 
@@ -303,7 +303,6 @@ import {
   Code,
   Type as TypeIcon
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 
 // --- Types ---
 
@@ -2062,28 +2061,79 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
+// تشخيص أمراض النباتات باستخدام OpenRouter (Qwen-VL-Plus)
+const OPENROUTER_MODEL = "qwen/qwen-vl-max";
+
+const analyzeWithOpenRouter = async (base64Image: string, apiKey: string) => {
+  const prompt = `
+أنت خبير بوتانيكا (علم النبات) وعالم زراعي متخصص. قم بتحليل هذه الصورة بدقة متناهية:
+1. التعرف على نوع النبات وهويته البيولوجية.
+2. فحص حالة الأوراق والسيقان لتحديد أي أعراض مرضية.
+
+أريد الرد حصراً بتنسيق JSON وبالمواصفات التالية:
+{
+  "plantName": "اذكر هنا (الاسم العلمي بحروف عربية - مثلاً إيفوربيا ميلي) متبوعاً بالاسم السوداني الشائع",
+  "isHealthy": boolean, 
+  "diagnosis": "في حال كان سليماً اكتب نصاً: 'ألف مبروك النبات بصحة ممتازة وهو سليم'. في حال وجود إصابة، اذكر التشخيص العلمي الدقيق باللغة العربية",
+  "generalMedicine": "العلاج الكيميائي المقترح والمواد الفعالة المطلوبة",
+  "localAlternative": "وصفة بلدية طبيعية فعالة في البيئة السودانية (مثل محلول الشطة، زيت النيم، الرماد، الخ)",
+  "careTips": ["نصائح رعاية علمية تشمل الري والتسميد والإضاءة بما يناسب مناخ السودان الحار"]
+}
+تحذير: لا تذكر أي حروف إنجليزية داخل الرد، اذكر الاسم العلمي باللغة العربية. لا تذكر أي نص خارج ملف JSON. كن دقيقاً جداً في اسم النبات.
+`;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": window.location.origin,
+        "X-Title": "Zone Agribusiness App",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `خطأ في الاتصال بالسيرفر (${response.status})`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error("فشل في تحليل استجابة الذكاء الاصطناعي");
+  } catch (err: any) {
+    console.error("OpenRouter fetch error:", err);
+    throw new Error(err.message === "Failed to fetch" ? "فشل الاتصال بـ OpenRouter. تأكد من جودة الإنترنت أو حاول لاحقاً." : err.message);
+  }
+};
+
 const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onClose: () => void, paidApiKey?: string | null }) => {
   const [source, setSource] = useState<'camera' | 'gallery' | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [showKeyInput, setShowKeyInput] = useState(false);
-  const [userKey, setUserKey] = useState('');
 
-  const saveUserKey = () => {
-    if (userKey.trim().startsWith('AIza')) {
-      localStorage.setItem('custom_gemini_key', userKey.trim());
-      setShowKeyInput(false);
-      // إذا كانت هناك صورة موجودة مسبقاً، ابدأ التحليل فوراً باستخدام المفتاح الجديد
-      if (image) {
-        analyzeImage(image);
-      } else {
-        alert('تم حفظ المفتاح بنجاح! يرجى اختيار صورة للبدء.');
-      }
-    } else {
-      alert('يرجى إدخال مفتاح API صحيح يبدأ بـ AIza');
-    }
-  };
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2091,12 +2141,16 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err: any) {
+      console.error("Camera access error:", err);
+      if (err.name === 'NotAllowedError') {
+        alert("يرجى إعطاء الإذن للكاميرا من إعدادات المتصفح.");
+      } else if (err.name === 'NotFoundError') {
+        alert("لم يتم العثور على كاميرا في هذا الجهاز.");
+      } else {
+        alert("عذراً، حدث خطأ في تشغيل الكاميرا. تأكد من إغلاق أي تطبيق آخر يستخدمها.");
       }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      alert("عذراً، لا يمكن الوصول إلى الكاميرا.");
     }
   };
 
@@ -2108,11 +2162,8 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
   };
 
   useEffect(() => {
-    if (source === 'camera') {
-      startCamera();
-    } else {
-      stopCamera();
-    }
+    if (source === 'camera') startCamera();
+    else stopCamera();
     return () => stopCamera();
   }, [source]);
 
@@ -2149,63 +2200,19 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
     setLoading(true);
     setResult(null);
     try {
-      const storedKey = localStorage.getItem('custom_gemini_key');
-      const apiKeyToUse = storedKey || (paidApiKey && paidApiKey.trim().startsWith('AIza') ? paidApiKey : SYSTEM_API_KEY);
-      
-      if (!apiKeyToUse) throw new Error("Gemini API key is missing.");
+      const activeKey = localStorage.getItem('custom_openrouter_key') || paidApiKey;
 
-      const ai = new GoogleGenAI({ apiKey: apiKeyToUse });
-      const model = "gemini-1.5-flash";
-      
-      const prompt = `قم بتحليل هذه الصورة ونفذ المهام التالية:
-      1. تعرف على نوع النبات.
-      2. حدد هل النبات سليم أم مصاب؟
-      3. إذا كان مصاباً، اذكر التشخيص العام (فطري، حشري، إلخ) والعلاج الكيميائي والبلدي المتوفر في السودان.
-      4. قدم نصائح رعاية تناسب جو السودان.
-      يجب أن يكون الرد بتنسيق JSON حصراً كالتالي:
-      { "plantName": "اسم النبات", "isHealthy": true/false, "diagnosis": "سليم أو اسم المرض", "generalMedicine": "اسم الدواء", "localAlternative": "البديل السوداني", "careTips": ["نصيحة 1", "نصيحة 2"] }`;
-
-      const response = await ai.models.generateContent({
-        model,
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: base64Image.includes(',') ? base64Image.split(',')[1] : base64Image
-                }
-              }
-            ]
-          }
-        ]
-      });
-
-      if (!response || !response.text) {
-        throw new Error("No response text from AI");
+      if (!activeKey) {
+        setResult({ error: "مفتاح API الخاص بـ OpenRouter مفقود. يرجى التواصل مع الإدارة." });
+        setLoading(false);
+        return;
       }
 
-      let text = response.text;
-      
-      // Clean up JSON if model adds markdown blocks
-      if (text.includes("```json")) {
-        text = text.split("```json")[1].split("```")[0];
-      } else if (text.includes("```")) {
-        text = text.split("```")[1].split("```")[0];
-      }
-
-      const data = JSON.parse(text.trim());
+      const data = await analyzeWithOpenRouter(base64Image, activeKey);
       setResult(data);
     } catch (err) {
       console.error("Analysis error:", err);
-      let errorMessage = "عذراً، حدث خطأ أثناء تحليل الصورة.";
-      let detail = err instanceof Error ? err.message : String(err);
-      
-      if (detail.includes("403") || detail.includes("permission")) {
-        errorMessage = "تم رفض الوصول (403). يرجى التأكد من أن مفتاح الـ API صحيح وأن بلدك مدعوم (أو استخدم VPN).";
-      }
-      setResult({ error: errorMessage, debug: detail });
+      setResult({ error: "عذراً، حدث خطأ أثناء تحليل الصورة.", debug: err instanceof Error ? err.message : String(err) });
     } finally {
       setLoading(false);
     }
@@ -2223,7 +2230,7 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
         <div className="p-6 border-b flex justify-between items-center bg-green-50">
           <div className="flex items-center space-x-reverse space-x-3">
             <Leaf className="text-green-600" size={24} />
-            <h2 className="text-xl font-black text-green-900">تشخيص أمراض النباتات</h2>
+            <h2 className="text-xl font-black text-green-900">تشخيص أمراض النباتات الذكي</h2>
           </div>
           <button onClick={() => { onClose(); setImage(null); setResult(null); setSource(null); }} className="p-2 hover:bg-green-100 rounded-full text-green-900">
             <X size={24} />
@@ -2233,18 +2240,12 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {!source && !image && !loading && !result && (
             <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={() => setSource('camera')}
-                className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all group"
-              >
-                <Camera size={48} className="text-green-600 mb-4 group-hover:scale-110 transition-transform" />
+              <button onClick={() => setSource('camera')} className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all">
+                <Camera size={48} className="text-green-600 mb-4" />
                 <span className="font-black text-green-900">فتح الكاميرا</span>
               </button>
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all group"
-              >
-                <Upload size={48} className="text-green-600 mb-4 group-hover:scale-110 transition-transform" />
+              <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all">
+                <Upload size={48} className="text-green-600 mb-4" />
                 <span className="font-black text-green-900">رفع من الاستوديو</span>
                 <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
               </button>
@@ -2252,12 +2253,9 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
           )}
 
           {source === 'camera' && (
-            <div className="relative rounded-3xl overflow-hidden bg-black aspect-square flex items-center justify-center">
+            <div className="relative rounded-3xl overflow-hidden bg-black aspect-square">
               <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-              <button 
-                onClick={captureImage}
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-green-500 shadow-xl flex items-center justify-center"
-              >
+              <button onClick={captureImage} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-green-500 flex items-center justify-center shadow-xl">
                 <div className="w-12 h-12 bg-white rounded-full border-2 border-gray-200" />
               </button>
             </div>
@@ -2266,7 +2264,7 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600"></div>
-              <p className="font-black text-green-900 animate-pulse">جاري تحليل حالة النبات...</p>
+              <p className="font-black text-green-900 animate-pulse">جاري تحليل الصورة بواسطة Qwen-VL-Plus...</p>
             </div>
           )}
 
@@ -2276,130 +2274,48 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
                 <div className="p-8 bg-red-50 rounded-3xl border border-red-100 flex flex-col items-center text-center space-y-4">
                   <AlertTriangle size={64} className="text-red-500" />
                   <p className="font-black text-red-900 text-lg">{result.error}</p>
-                  
-                  {result.debug && (
-                    <div className="mt-2 p-2 bg-gray-100 rounded-lg border border-gray-200">
-                      <p className="text-[10px] font-mono text-gray-500 overflow-auto max-h-20">
-                        Error Detail: {result.debug}
-                      </p>
-                    </div>
-                  )}
-
-                  {localStorage.getItem('custom_gemini_key') && (
-                    <div className="flex flex-col items-center space-y-2 mt-2">
-                      <p className="text-[10px] text-blue-600 font-bold bg-blue-50 p-2 rounded-lg">
-                        مفتاحك الخاص نشط حالياً: {localStorage.getItem('custom_gemini_key')?.substring(0, 8)}...
-                      </p>
-                      <button 
-                        onClick={() => {
-                          localStorage.removeItem('custom_gemini_key');
-                          window.location.reload();
-                        }}
-                        className="text-[10px] text-red-500 underline"
-                      >
-                        مسح المفتاح والعودة للمفتاح الافتراضي
-                      </button>
-                    </div>
-                  )}
-
-                  {!showKeyInput ? (
-                    <button 
-                      onClick={() => setShowKeyInput(true)}
-                      className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black shadow-lg"
-                    >
-                      {localStorage.getItem('custom_gemini_key') ? 'تغيير مفتاح API' : 'إدخال مفتاح API خاص'}
-                    </button>
-                  ) : (
-                    <div className="w-full space-y-3 p-4 bg-white rounded-2xl border border-gray-200">
-                      <p className="text-xs font-bold text-gray-500">أدخل مفتاح Gemini API (يبدأ بـ AIza):</p>
-                      <input 
-                        type="password"
-                        value={userKey}
-                        onChange={(e) => setUserKey(e.target.value)}
-                        className="w-full p-3 bg-gray-50 border rounded-xl text-center font-mono text-sm"
-                        placeholder="AIza..."
-                      />
-                      <button 
-                        onClick={saveUserKey}
-                        className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-sm"
-                      >
-                        حفظ المفتاح وتجربة التحليل
-                      </button>
-                    </div>
-                  )}
                 </div>
               ) : (
-                <>
-                  {image && (
-                    <div className="relative w-full h-48 rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
-                      <img src={image} alt="Captured" className="w-full h-full object-cover" />
-                      {result.plantName && (
-                        <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                          <p className="text-white font-black text-center text-lg">{result.plantName}</p>
+                <div className="space-y-6 text-right" dir="rtl">
+                  {/* السطر الأول: اسم النبات العلمي والسوداني */}
+                  <div className="p-5 bg-green-50 rounded-3xl border-2 border-green-200">
+                    <p className="text-center font-black text-green-900 text-xl leading-relaxed">
+                      نبات: <span className="text-green-700">{result.plantName}</span>
+                    </p>
+                  </div>
+
+                  <div className="relative w-full h-48 rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
+                    <img src={image || ''} alt="Plant" className="w-full h-full object-cover" />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className={`p-6 rounded-3xl border ${result.isHealthy ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100'}`}>
+                      <h3 className="font-black text-lg mb-2">{result.isHealthy ? '✅ حالة النبات' : '⚠️ تشخيص الإصابة'}</h3>
+                      <p className="font-bold text-gray-700">{result.isHealthy ? 'ألف مبروك النبات بصحة ممتازة وهو سليم' : result.diagnosis}</p>
+                      {!result.isHealthy && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-sm font-bold"><span className="text-green-800">العلاج:</span> {result.generalMedicine}</p>
+                          <p className="text-sm font-bold"><span className="text-blue-800">البديل البلدي:</span> {result.localAlternative}</p>
                         </div>
                       )}
                     </div>
-                  )}
 
-                  <div className="space-y-6">
-                    <div className="p-5 bg-green-50 rounded-3xl border border-green-100">
-                      <p className="text-center font-black text-green-900 text-lg">
-                        اسم النبات: <span className="text-green-600 underline decoration-green-200">{result.plantName || 'غير معروف'}</span>
-                      </p>
-                    </div>
-
-                    {result.isHealthy ? (
-                      <div className="p-6 bg-green-50 rounded-3xl border border-green-100 flex items-center space-x-reverse space-x-4 text-green-900">
-                        <CheckCircle size={32} className="shrink-0" />
-                        <p className="font-black text-lg">ألف مبروك، النبات بصحة جيدة وهو سليم.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="p-6 bg-orange-50 rounded-3xl border border-orange-100 space-y-2">
-                          <h3 className="font-black text-orange-900 flex items-center space-x-reverse space-x-2">
-                            <AlertTriangle size={20} />
-                            <span>التشخيص: {result.diagnosis || 'لم يتم التحديد'}</span>
-                          </h3>
-                          <div className="space-y-3">
-                            <p className="text-sm font-bold text-orange-800">
-                              <span className="font-black">العلاج المقترح:</span> {result.generalMedicine || 'لا يوجد علاج محدد حالياً'}
+                    {result.careTips && (
+                      <div className="space-y-2">
+                        <h4 className="font-black text-green-900 px-2">نصائح الرعاية:</h4>
+                        <div className="bg-white rounded-3xl border p-4 space-y-2">
+                          {result.careTips.map((tip: string, i: number) => (
+                            <p key={i} className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                              <span className="w-2 h-2 bg-green-500 rounded-full shrink-0" /> {tip}
                             </p>
-                            {result.localAlternative && (
-                              <p className="text-sm font-bold text-green-800 bg-green-100/50 p-3 rounded-xl">
-                                <span className="font-black">البديل البلدي (في حال عدم توفر الدواء):</span> {result.localAlternative}
-                              </p>
-                            )}
-                          </div>
+                          ))}
                         </div>
                       </div>
                     )}
-
-                    {result.careTips && result.careTips.length > 0 && (
-                      <div className="space-y-3">
-                        <h3 className="font-black text-green-900 flex items-center space-x-reverse space-x-2">
-                          <Leaf size={20} />
-                          <span>نصائح للرعاية بالنبات:</span>
-                        </h3>
-                        <ul className="space-y-2">
-                          {result.careTips.map((tip: string, i: number) => (
-                            <li key={i} className="flex items-start space-x-reverse space-x-2 text-sm font-bold text-gray-700">
-                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5 flex-shrink-0" />
-                              <span>{tip}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
-                </>
+                </div>
               )}
-
-              <button 
-                onClick={() => { setImage(null); setResult(null); setSource(null); }}
-                className="w-full h-14 bg-green-600 text-white rounded-2xl font-black shadow-lg hover:bg-green-700 transition-all"
-              >
-                تحديث / تشخيص جديد
-              </button>
+              <button onClick={() => { setImage(null); setResult(null); setSource(null); }} className="w-full h-14 bg-green-600 text-white rounded-2xl font-black shadow-lg">تشخيص جديد</button>
             </div>
           )}
         </div>
@@ -2454,9 +2370,10 @@ export default function App() {
   const paidApiKey = useMemo(() => {
     if (data.length === 0) return null;
     const keys = Object.keys(data[0]);
-    if (keys.length < 8) return null;
-    const h1Value = keys[7]; // Cell H1 is the 8th column header
-    return h1Value && h1Value.startsWith('AIza') ? h1Value : null;
+    if (keys.length < 9) return null;
+    // الخلية I2 تعني العمود التاسع (index 8) والصف الأول من البيانات بعد الهيدر
+    const i2Value = data[0][keys[8]]; 
+    return i2Value && i2Value.toString().trim().startsWith('sk-or-v1-') ? i2Value.toString().trim() : null;
   }, [data]);
 
   const notifications = useMemo(() => {
