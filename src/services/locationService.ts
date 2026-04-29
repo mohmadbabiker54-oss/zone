@@ -41,10 +41,10 @@ export const LocationService = {
       }
 
       // 2. High Accuracy Attempt with fresh data
-      // We use a small timeout to try and catch a real GPS signal quickly
+      // We use a larger timeout (20s) to allow GPS hardware time to lock in a real signal
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 20000,
         maximumAge: 0 
       });
 
