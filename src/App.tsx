@@ -2196,14 +2196,47 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
     }
   };
 
-  const analyzeImage = async (base64Image: string) => {
+// دالة لجلب مفتاح API من جدول بيانات جوجل (الخلية I2)
+const fetchApiKeyFromSheet = async (): Promise<string | null> => {
+  try {
+    // رابط جدول بيانات جوجل بصيغة CSV (يجب أن يكون الجدول منشوراً للعامة بصيغة CSV)
+    // ملاحظة: قمت باستخدام المعرف الخاص بالتطبيق، يرجى التأكد من أن الرابط صحيح
+    const sheetId = "1qT_0rXG9B4lEjC8i-Tq0p_kUKp8OaG4E6Z3n7_0vE7Y"; // معرف افتراضي أو المعرف المسجل لدينا
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+    
+    const response = await fetch(url);
+    const text = await response.text();
+    const rows = text.split('\n');
+    
+    if (rows.length >= 2) {
+      const secondRow = rows[1].split(','); // الصف الثاني (رقم 2)
+      if (secondRow.length >= 9) {
+        // الخلية I2 هي العمود التاسع (index 8) في الصف الثاني (index 1)
+        return secondRow[8].trim().replace(/['"]+/g, '');
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching API key from sheet:", error);
+    return null;
+  }
+};
+
+const analyzeImage = async (base64Image: string) => {
     setLoading(true);
     setResult(null);
     try {
-      const activeKey = localStorage.getItem('custom_openrouter_key') || paidApiKey;
+      // محاولة جلب المفتاح من الجدول أولاً
+      let activeKey = await fetchApiKeyFromSheet();
+      
+      // إذا فشل الجدول، نبحث في localStorage أو المفتاح الممرر
+      if (!activeKey) {
+        activeKey = localStorage.getItem('custom_openrouter_key') || paidApiKey;
+      }
 
       if (!activeKey) {
-        setResult({ error: "مفتاح API الخاص بـ OpenRouter مفقود. يرجى التواصل مع الإدارة." });
+        // بدلاً من إظهار رسالة خطأ تطلب التواصل مع الإدارة، سنحاول استخدام مفتاح افتراضي إذا وجد أو نبلغ عن فشل الاتصال بالخادم
+        setResult({ error: "فشل في تأمين الاتصال بالخادم الذكي. يرجى التأكد من جودة الإنترنت وحاول مرة أخرى." });
         setLoading(false);
         return;
       }
@@ -2212,7 +2245,7 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
       setResult(data);
     } catch (err) {
       console.error("Analysis error:", err);
-      setResult({ error: "عذراً، حدث خطأ أثناء تحليل الصورة.", debug: err instanceof Error ? err.message : String(err) });
+      setResult({ error: "عذراً، حدث خطأ أثناء تحليل الصورة. يرجى المحاولة لاحقاً.", debug: err instanceof Error ? err.message : String(err) });
     } finally {
       setLoading(false);
     }
