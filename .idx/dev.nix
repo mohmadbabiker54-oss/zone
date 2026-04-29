@@ -9,11 +9,14 @@
     pkgs.jdk17
     pkgs.android-tools
     pkgs.gradle
+    pkgs.nodePackages.typescript-language-server
+    pkgs.nodePackages.vscode-langservers-extracted
   ];
   # Sets environment variables in the workspace
   env = {
     # Set the JAVA_HOME for Android builds
     JAVA_HOME = "${pkgs.jdk17}";
+    CAPACITOR_ANDROID_STUDIO_PATH = ""; # IDX specific or custom path
   };
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
@@ -21,6 +24,7 @@
       "dsznajder.es7-react-js-snippets"
       "bradlc.vscode-tailwindcss"
       "vscjava.vscode-java-pack"
+      "ms-vscode.vscode-typescript-next"
     ];
     # Enable previews and customize configuration
     previews = {
@@ -36,14 +40,13 @@
     workspace = {
       # Runs when a workspace is first created
       onCreate = {
-        npm-install = "npm install";
-        # Add android platform if not already added
-        # add-android = "npx cap add android";
+        npm-install = "npm i --legacy-peer-deps";
+        cap-sync = "npx cap sync android";
       };
       # Runs when a workspace is (re)started
       onStart = {
-        # Optional: run build to sync web assets
-        # build-and-sync = "npm run build && npx cap sync android";
+        # Check if node_modules exists, if not install
+        dist-check = "mkdir -p dist";
       };
     };
   };
