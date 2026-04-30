@@ -2304,28 +2304,34 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
     }
   };
 
-// دالة لجلب مفتاح API من جدول بيانات جوجل (الخلية I2)
-const fetchApiKeyFromSheet = async (): Promise<string | null> => {
+// دالة لجلب مفتاح API من رابط GAS (JSON) بأسلوب احترافي
+const fetchApiKeyFromGAS = async (): Promise<string | null> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // مهلة 10 ثوانٍ
+
   try {
-    // رابط جدول بيانات جوجل بصيغة CSV (يجب أن يكون الجدول منشوراً للعامة بصيغة CSV)
-    // ملاحظة: قمت باستخدام المعرف الخاص بالتطبيق، يرجى التأكد من أن الرابط صحيح
-    const sheetId = "1qT_0rXG9B4lEjC8i-Tq0p_kUKp8OaG4E6Z3n7_0vE7Y"; // معرف افتراضي أو المعرف المسجل لدينا
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+    const response = await fetch(`${SYSTEM_GAS_URL}?action=getApiKey`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal
+    });
     
-    const response = await fetch(url);
-    const text = await response.text();
-    const rows = text.split('\n');
+    clearTimeout(timeoutId);
     
-    if (rows.length >= 2) {
-      const secondRow = rows[1].split(','); // الصف الثاني (رقم 2)
-      if (secondRow.length >= 9) {
-        // الخلية I2 هي العمود التاسع (index 8) في الصف الثاني (index 1)
-        return secondRow[8].trim().replace(/['"]+/g, '');
-      }
+    if (!response.ok) return null;
+    const data = await response.json();
+    
+    // التحقق من وجود المفتاح في الكائن المستلم
+    if (data && typeof data === 'object' && data.apiKey) {
+      return data.apiKey;
     }
     return null;
   } catch (error) {
-    console.error("Error fetching API key from sheet:", error);
+    clearTimeout(timeoutId);
+    console.error("GAS Auth: Professional fetch failed", error);
     return null;
   }
 };
@@ -2335,7 +2341,7 @@ const analyzeImage = async (base64Image: string) => {
     setResult(null);
     try {
       // محاولة جلب المفتاح من الجدول أولاً
-      let activeKey = await fetchApiKeyFromSheet();
+      let activeKey = await fetchApiKeyFromGAS();
       
       // إذا فشل الجدول، نبحث في localStorage أو المفتاح الممرر
       if (!activeKey) {
@@ -2708,72 +2714,96 @@ export default function App() {
           return;
         }
 
-        // 3. Check for changes in Google Sheets
+        // 3. Check for changes in Google Sheets via GAS (Professional Fetching)
         try {
-          // Try to get the last known version
           const lastVersion = await getMetadata('data_version');
           
-          // Fetch with a check parameter
+          // المهلة الزمنية (Timeout) لمنع التعليق
+          const checkController = new AbortController();
+          const checkTimeout = setTimeout(() => checkController.abort(), 10000); // 10 ثواني كحد أقصى
+
+          // جلب تحقق النسخة مع رؤوس احترافية
           const response = await fetch(`${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}`, {
-            signal: AbortSignal.timeout(5000) // 5 second timeout for the check
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            signal: checkController.signal
           });
           
-          if (!response.ok) throw new Error('Network response was not ok');
-          const result = await response.json();
+          clearTimeout(checkTimeout);
+          
+          if (!response.ok) throw new Error('ERR_SERVER_RESPONSE');
+          const checkResult = await response.json();
 
-          // Mark as synced for this session even if no change, to prevent repeated checks
           sessionStorage.setItem('zone_sheets_synced', 'true');
 
-          // If GAS script returns { changed: false }, we stop here
-          if (result && result.changed === false) {
-            console.log("No changes detected in Google Sheets. Using cached data.");
+          if (checkResult && checkResult.changed === false && cachedProducts.length > 0) {
+            console.log("GAS: Data is up-to-date.");
+            setLoading(false);
             return;
           }
 
-          // 4. If changed or no check possible, fetch the data
+          // جلب البيانات الكاملة في حال وجود تحديث
+          const fullFetchController = new AbortController();
+          const fullFetchTimeout = setTimeout(() => fullFetchController.abort(), 20000); // 20 ثانية للبيانات الكاملة
+
           const fullResponse = await fetch(SYSTEM_GAS_URL, {
-            signal: AbortSignal.timeout(15000) // 15 second timeout for full fetch
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            signal: fullFetchController.signal
           });
           
-          if (!fullResponse.ok) throw new Error('Full fetch failed');
-          const jsonData = await fullResponse.json();
+          clearTimeout(fullFetchTimeout);
           
-          // Simple hash check
-          const currentHash = JSON.stringify(jsonData).length;
-          if (currentHash === lastVersion) {
-            console.log("Data hash matches. No updates needed.");
-            return;
+          if (!fullResponse.ok) throw new Error('ERR_DATA_FETCH');
+          const jsonData = await fullResponse.json();
+
+          // التحقق من صحة هيكل البيانات (JSON Parsing Safety)
+          if (!Array.isArray(jsonData)) {
+            throw new Error('ERR_INVALID_FORMAT');
           }
 
-          // Update local storage and state
-          setData(jsonData as any[]);
-          await saveProducts(jsonData as any[]);
+          const currentHash = JSON.stringify(jsonData).length.toString();
+
+          if (lastVersion && currentHash === lastVersion && cachedProducts.length > 0) {
+             setLoading(false);
+             return;
+          }
+
+          setData(jsonData);
+          await saveProducts(jsonData);
           await saveMetadata('data_version', currentHash);
           
           setLoading(false);
-          console.log("Data updated from Google Sheets and saved to local storage");
+          console.log("GAS: Database synced successfully.");
 
-          // Pre-cache all images from the new data to make them available offline and minimize future downloads
+          // التخزين المؤقت للصور (Background Tasks)
           jsonData.forEach((product: any) => {
             if (product.image) {
-              // Internal check to cache if not exists
               (async () => {
-                const cached = await getCachedImage(product.image);
-                if (!cached) {
-                  try {
-                    const response = await fetch(product.image, { mode: 'cors' });
-                    if (response.ok) {
-                      const blob = await response.blob();
+                try {
+                  const cached = await getCachedImage(product.image);
+                  if (!cached) {
+                    const imgRes = await fetch(product.image, { mode: 'cors' });
+                    if (imgRes.ok) {
+                      const blob = await imgRes.blob();
                       await cacheImage(product.image, blob);
-                      console.log("Pre-cached image:", product.name);
                     }
-                  } catch (e) { /* ignore cors/error */ }
-                }
+                  }
+                } catch (e) { /* silent fail for assets */ }
               })();
             }
           });
-        } catch (fetchError) {
-          console.warn("Network fetch failed, staying with cached data:", fetchError);
+        } catch (fetchError: any) {
+          console.error("Networking logic failed:", fetchError);
+          // رسالة خطأ صديقة للمستخدم
+          let userMessage = "خطأ في الاتصال بالخادم، جارٍ العمل بالبيانات المحفوظة";
+          if (fetchError.name === 'AbortError') userMessage = "اتصال الإنترنت ضعيف جداً، سنحاول لاحقاً";
           setLoading(false);
         }
       } catch (error) {
@@ -3759,8 +3789,32 @@ export default function App() {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center h-64 relative z-10">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-700"></div>
+              <div className="flex flex-col items-center justify-center h-[50vh] relative z-20">
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.1, 1],
+                    rotate: [0, 5, -5, 0],
+                    filter: ["drop-shadow(0 0 10px rgba(183, 28, 28, 0.4))", "drop-shadow(0 0 30px rgba(183, 28, 28, 0.8))", "drop-shadow(0 0 10px rgba(183, 28, 28, 0.4))"]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-[2.5rem] border-2 border-white/20 p-4 shadow-2xl relative overflow-hidden flex items-center justify-center"
+                >
+                  <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-full h-full object-contain" alt="loading" />
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 border-t-4 border-red-600 rounded-full"
+                    style={{ margin: '-4px' }}
+                  />
+                </motion.div>
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="mt-8 text-center"
+                >
+                  <span className="text-red-800 font-black text-xl tracking-[0.2em] drop-shadow-sm">جاري التحديث الذكي...</span>
+                  <p className="text-gray-500 font-bold text-xs mt-2 italic">نحن نقوم بجلب أفضل الشتلات والمنتجات لك</p>
+                </motion.div>
               </div>
             ) : (
               <AnimatePresence mode="wait">
