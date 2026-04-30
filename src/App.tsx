@@ -61,6 +61,8 @@ import {
   Upload,
   Trash2,
   Leaf,
+  Info,
+  LeafyGreen,
   AlertTriangle,
   Image as ImageIcon,
   Flower2,
@@ -100,6 +102,7 @@ import {
   Heart,
   Star,
   Globe,
+  ExternalLink,
   Compass,
   Map,
   MapPin,
@@ -230,7 +233,6 @@ import {
   Phone,
   Video as VideoIcon,
   Share2,
-  ExternalLink,
   Link,
   Paperclip,
   Bookmark,
@@ -332,6 +334,122 @@ interface GridItemProps {
 // --- Components ---
 
 // --- Components ---
+
+const InitialTermsScreen = ({ onAccept }: { onAccept: () => void }) => {
+  const [agreed, setAgreed] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-[#042f22] z-[150] flex items-center justify-center p-4"
+    >
+      <motion.div
+        initial={{ y: 50, scale: 0.9 }}
+        animate={{ y: 0, scale: 1 }}
+        className="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative"
+      >
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center">
+              <Shield className="text-red-700 w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-red-800">اتفاقية الاستخدام</h2>
+              <p className="text-[10px] font-bold text-gray-500 italic">مشتل زون - سياسة الخصوصية</p>
+            </div>
+          </div>
+          <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-12 h-12 object-contain opacity-20" alt="logo" />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-right" dir="rtl">
+          <section>
+            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+              مقدمة واتفاقية الاستخدام
+            </h3>
+            <p className="text-xs text-gray-600 font-bold leading-relaxed">
+              باستخدامك لتطبيق "مشتل زون"، فإنك تقر بموافقتك الكاملة على شروطنا. نحن نسعى لتقديم أفضل الممارسات الزراعية عبر توفير الشتلات والذكاء الاصطناعي للمساعدة في تشخيص الأمراض وتعزيز المساحات الخضراء.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+              سياسة الخصوصية وحماية البيانات
+            </h3>
+            <p className="text-xs text-gray-600 font-bold leading-relaxed">
+              نلتزم بحماية خصوصيتك. نقوم بجمع بيانات الاسم، رقم الهاتف، والموقع الجغرافي فقط لضمان دقة توصيل الطلبات. يتم تشفير هذه البيانات ومعالجتها بسرية تامة، ولن يتم بيعها أو مشاركتها مع أطراف ثالثة لأغراض تسويقية.
+            </p>
+          </section>
+
+          <section className="bg-red-50 p-4 rounded-3xl border border-red-100">
+            <h3 className="text-sm font-black text-red-700 mb-2">الوصول للكاميرا والمعرض</h3>
+            <p className="text-[11px] text-red-900/70 font-bold leading-relaxed">
+              يتطلب نظام "طبيب النبات" الوصول للكاميرا أو معرض الصور لالتقاط صور الأوراق المصابة وتحليلها. نؤكد أن الصور تُستخدم فقط لغرض التشخيص الآلي ولا يتم تخزين صورك الشخصية في أي أرشيف عام.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+              معلومات الموقع (GPS)
+            </h3>
+            <p className="text-xs text-gray-600 font-bold leading-relaxed">
+              يطلب التطبيق إذن الموقع الجغرافي لتحديد مكان التسليم بدقة وتوفير معلومات زراعية تتناسب مع مناخ منطقتك. يمكنك التحكم في هذا الإذن عبر إعدادات جهازك.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+              إخلاء المسؤولية
+            </h3>
+            <p className="text-xs text-gray-600 font-bold leading-relaxed">
+              التشخيصات المقدمة عبر الذكاء الاصطناعي هي نصائح استرشادية مبنية على البيانات المتاحة. في حالات الإصابات الحرجة، ننصح دائماً بمشاورة خبير زراعي ميداني.
+            </p>
+          </section>
+
+          <div className="p-4 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="flex-1 text-right">
+                <span className="text-[11px] font-black text-gray-700 group-hover:text-red-700 transition-colors">أقر بأنني قرأت وفهمت سياسة الخصوصية وأوافق على شروط الاستخدام بالكامل</span>
+              </div>
+              <div className="relative w-7 h-7">
+                <input 
+                  type="checkbox" 
+                  className="peer hidden" 
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                />
+                <div className="w-full h-full border-2 border-gray-300 rounded-lg bg-white peer-checked:bg-red-700 peer-checked:border-red-700 transition-all flex items-center justify-center">
+                  <Check className="text-white w-4 h-4 opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all" />
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div className="p-6 bg-white flex flex-col gap-3">
+          <button
+            disabled={!agreed}
+            onClick={onAccept}
+            className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
+              agreed 
+                ? "bg-red-700 text-white hover:bg-red-800 scale-[1.02]" 
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            <span>دخول التطبيق</span>
+            <ArrowRight className="w-4 h-4 rotate-180" />
+          </button>
+          <p className="text-center text-[10px] text-gray-400 font-bold italic">يجب الموافقة للمتابعة</p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const RegistrationScreen = ({ onComplete, onShowLegal }: { onComplete: (data: UserData) => void, onShowLegal: () => void }) => {
   const [name, setName] = useState('');
@@ -2306,31 +2424,23 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
 
 // دالة لجلب مفتاح API من رابط GAS (JSON) بأسلوب احترافي
 const fetchApiKeyFromGAS = async (): Promise<string | null> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // مهلة 10 ثوانٍ
-
   try {
     const response = await fetch(`${SYSTEM_GAS_URL}?action=getApiKey`, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      signal: controller.signal
+      headers: { 'Accept': 'application/json' },
+      mode: 'cors',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000) // 15 ثانية للتوثيق
     });
-    
-    clearTimeout(timeoutId);
     
     if (!response.ok) return null;
     const data = await response.json();
     
-    // التحقق من وجود المفتاح في الكائن المستلم
     if (data && typeof data === 'object' && data.apiKey) {
       return data.apiKey;
     }
     return null;
   } catch (error) {
-    clearTimeout(timeoutId);
     console.error("GAS Auth: Professional fetch failed", error);
     return null;
   }
@@ -2475,6 +2585,84 @@ const analyzeImage = async (base64Image: string) => {
   );
 };
 
+const AboutModal = ({ isOpen, onClose, onShowPrivacy }: { isOpen: boolean, onClose: () => void, onShowPrivacy: () => void }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-[350] flex items-center justify-center p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 50 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 50 }}
+            className="bg-white rounded-[3rem] w-full max-w-sm flex flex-col shadow-2xl relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Artistic Decorations */}
+            <div className="absolute top-0 left-0 w-32 h-32 bg-red-50 rounded-full -ml-16 -mt-16 opacity-50" />
+            <div className="absolute bottom-0 right-0 w-24 h-24 bg-green-50 rounded-full -mr-12 -mb-12 opacity-50" />
+
+            <div className="p-8 text-center relative z-10">
+              <div className="w-24 h-24 bg-white rounded-3xl shadow-xl mx-auto flex items-center justify-center mb-6 border-2 border-red-50 p-4">
+                <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-full h-full object-contain" alt="about-logo" />
+              </div>
+              
+              <h2 className="text-2xl font-black text-red-800 mb-2">مشتل زون</h2>
+              <div className="h-1.5 w-12 bg-red-600 mx-auto rounded-full mb-6" />
+              
+              <div className="text-right space-y-4" dir="rtl">
+                <p className="text-sm font-bold text-gray-600 leading-relaxed italic">
+                  "مشتل زون" هو تطبيقك الزراعي المتكامل في السودان. نحن نجمع بين شغف الزراعة وتقنيات الذكاء الاصطناعي لنوفر لك أفضل أنواع الشتلات، بذور الزينة، وتصاميم اللاندسكيب، مع خدمة "طبيب النبات" الفريدة للتشخيص الفوري.
+                </p>
+                
+                <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100 flex items-center gap-4">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                    <ShieldCheck className="text-red-700 w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-[11px] font-black text-gray-800">سياسة الخصوصية</h4>
+                    <p className="text-[9px] font-bold text-gray-500">بياناتك محمية وفق أعلى المعايير</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    onClose();
+                    onShowPrivacy();
+                  }}
+                  className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-sm shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 group"
+                >
+                  <FileText size={18} className="group-hover:scale-110 transition-transform" />
+                  <span>سياسة الخصوصية وشروط الاستخدام</span>
+                </button>
+                
+                <button
+                  onClick={onClose}
+                  className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm hover:bg-gray-200 transition-all"
+                >
+                  الرجوع للتطبيق
+                </button>
+              </div>
+
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                <p className="text-[10px] font-black text-gray-400 tracking-[0.2em]">ZONE VERSION 2.5</p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   if (!isOpen) return null;
   return (
@@ -2495,48 +2683,56 @@ const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-8 text-right" dir="rtl">
           <section>
-            <h3 className="text-lg font-black text-red-700 mb-3 border-b-2 border-red-100 pb-2">1. اتفاقية الاستخدام (Terms of Use)</h3>
-            <ul className="space-y-3 text-gray-700 font-bold leading-relaxed">
-              <li className="flex items-start gap-2">
+            <h3 className="text-lg font-black text-red-700 mb-3 border-b-2 border-red-100 pb-2">1. اتفاقية الاستخدام ونطاق الخدمة</h3>
+            <ul className="space-y-4 text-gray-700 font-bold leading-relaxed">
+              <li className="flex items-start gap-3">
                 <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>يقدم تطبيق "زون" استشارات زراعية مبنية على الذكاء الاصطناعي وخدمات بيع الشتلات واللاندسكيب.</span>
+                <span>يقدم تطبيق "زون" استشارات زراعية مبنية على الذكاء الاصطناعي، وخدمات بيع الشتلات، وتصاميم اللاندسكيب في السودان.</span>
               </li>
-              <li className="flex items-start gap-2">
+              <li className="flex items-start gap-3">
                 <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>تشخيص الأمراض عبر التطبيق هو استرشاد يهدف للمساعدة، ولا يعد بديلاً نهائياً عن الفحص الميداني المختص.</span>
+                <span>تشخيص أمراض النباتات عبر الكاميرا هو وسيلة مساعدة واسترشادية تهدف لنشر الوعي الزراعي.</span>
               </li>
-              <li className="flex items-start gap-2">
+              <li className="flex items-start gap-3">
                 <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>المستخدم مسؤول عن دقة الإحداثيات (GPS) المرفقة لضمان دقة التوصيل.</span>
+                <span>المستخدم مسؤول مسؤولية كاملة عن دقة بيانات التواصل والموقع (GPS) المرفقة بطلبات الشراء.</span>
               </li>
-              <li className="flex items-start gap-2">
+              <li className="flex items-start gap-3">
                 <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>تأكيد الطلبات يتم بعد مراجعة إشعار الدفع الإلكتروني المرفق من قبل الإدارة.</span>
+                <span>حقوق ملكية الصور والمحتوى والمختبرات البرمجية داخل التطبيق محفوظة حصرياً لإدارة "مشتل زون".</span>
               </li>
             </ul>
           </section>
 
           <section>
-            <h3 className="text-lg font-black text-green-700 mb-3 border-b-2 border-green-100 pb-2">2. سياسة الخصوصية (Privacy Policy)</h3>
-            <ul className="space-y-3 text-gray-700 font-bold leading-relaxed">
-              <li className="flex items-start gap-2">
+            <h3 className="text-lg font-black text-green-700 mb-3 border-b-2 border-green-100 pb-2">2. سياسة الخصوصية وحقوق البيانات</h3>
+            <ul className="space-y-4 text-gray-700 font-bold leading-relaxed">
+              <li className="flex items-start gap-3">
                 <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>نجمع الصور المرفوعة للتحليل، والموقع الجغرافي للتوصيل، ومعلومات التواصل لإتمام الشراء.</span>
+                <span>نجمع بياناتك الشخصية (الاسم والواتساب) لغرض التوثيق والتواصل معك بخصوص طلباتك فقط.</span>
               </li>
-              <li className="flex items-start gap-2">
+              <li className="flex items-start gap-3">
                 <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>صور إشعارات الدفع والبيانات الشخصية تُعامل بسرية كاملة وتُستخدم لتدقيق المعاملات المالية فقط.</span>
+                <span>نطلب إذن الوصول للكاميرا ومعرض الصور لتمكين ميزة تحليل النباتات؛ لا نطلع على صورك الشخصية الخارجة عن هذا النطاق.</span>
               </li>
-              <li className="flex items-start gap-2">
+              <li className="flex items-start gap-3">
                 <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>لا نشارك بياناتك مع أي جهات خارجية إلا في حدود ما يتطلبه التوصيل أو التدقيق البنكي.</span>
+                <span>صور إشعارات الدفع المرفوعة تُعامل بسرية مصرفية تامة وتُستخدم حصرياً لتدقيق الحسابات المالية.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
+                <span>يتم استخدام بيانات الموقع الجغرافي لتنسيق عمليات التوصيل اللوجستية وتحديد تكلفة النقل بدقة.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
+                <span>لا يتم تخزين بياناتك الحساسة في خوادم مفتوحة، ونستخدم بروتوكولات حماية متقدمة لمنع أي تسريب للمعلومات.</span>
               </li>
             </ul>
           </section>
 
-          <div className="bg-gray-100 p-4 rounded-2xl text-center">
-            <p className="text-xs text-gray-500 font-bold">آخر تحديث: أبريل 2026</p>
-            <p className="text-xs text-gray-500">مشتل زون لخدمات الحدائق - السودان</p>
+          <div className="bg-gray-100 p-6 rounded-[2rem] text-center border border-gray-200">
+            <p className="text-xs text-gray-400 font-black mb-1">الإصدار القانوني المعتمد 2.5</p>
+            <p className="text-[10px] text-gray-400 font-bold">آخر تحديث: أبريل 2026 - مشتل زون المطور (السودان)</p>
           </div>
         </div>
         <button onClick={onClose} className="m-6 h-14 bg-red-700 text-white rounded-2xl font-black shadow-xl">موافق، إغلاق</button>
@@ -2549,8 +2745,10 @@ const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [showTerms, setShowTerms] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState<string | null>(null);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -2584,6 +2782,7 @@ export default function App() {
   const [showCartHint, setShowCartHint] = useState(false);
   const [isDiagnosisOpen, setIsDiagnosisOpen] = useState(false);
   const [isLegalOpen, setIsLegalOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -2631,22 +2830,18 @@ export default function App() {
 
   const transformDriveUrl = (url: string) => {
     if (!url || typeof url !== 'string') return "";
-    const trimmedUrl = url.trim();
+    let trimmedUrl = url.trim();
     if (!trimmedUrl.startsWith('http')) return "";
     
-    // Handle Google Drive view links
-    const driveRegex = /\/file\/d\/([^\/]+)\//;
-    const match = trimmedUrl.match(driveRegex);
-    if (match && match[1]) {
-      return `https://docs.google.com/uc?export=download&id=${match[1]}`;
+    // التحقق من روابط جوجل درايف وتحويلها لروابط مباشرة (Direct Link)
+    if (trimmedUrl.includes('drive.google.com')) {
+      // استخراج المعرف (ID) سواء كان في رابط مشاركة أو رابط عرض أو رابط مباشر
+      const idMatch = trimmedUrl.match(/\/file\/d\/([^\/\?]+)/) || trimmedUrl.match(/id=([^\&]+)/);
+      if (idMatch && idMatch[1]) {
+        return `https://docs.google.com/uc?export=download&id=${idMatch[1]}`;
+      }
     }
     
-    // Handle sharing links like drive.google.com/open?id=...
-    if (trimmedUrl.includes('drive.google.com/open?id=')) {
-      const id = trimmedUrl.split('id=')[1]?.split('&')[0];
-      if (id) return `https://docs.google.com/uc?export=download&id=${id}`;
-    }
-
     return trimmedUrl;
   };
 
@@ -2719,20 +2914,13 @@ export default function App() {
           const lastVersion = await getMetadata('data_version');
           
           // المهلة الزمنية (Timeout) لمنع التعليق
-          const checkController = new AbortController();
-          const checkTimeout = setTimeout(() => checkController.abort(), 10000); // 10 ثواني كحد أقصى
-
-          // جلب تحقق النسخة مع رؤوس احترافية
           const response = await fetch(`${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}`, {
             method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            signal: checkController.signal
+            headers: { 'Accept': 'application/json' },
+            mode: 'cors',
+            redirect: 'follow',
+            signal: AbortSignal.timeout(20000)
           });
-          
-          clearTimeout(checkTimeout);
           
           if (!response.ok) throw new Error('ERR_SERVER_RESPONSE');
           const checkResult = await response.json();
@@ -2746,53 +2934,110 @@ export default function App() {
           }
 
           // جلب البيانات الكاملة في حال وجود تحديث
-          const fullFetchController = new AbortController();
-          const fullFetchTimeout = setTimeout(() => fullFetchController.abort(), 20000); // 20 ثانية للبيانات الكاملة
-
           const fullResponse = await fetch(SYSTEM_GAS_URL, {
             method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            signal: fullFetchController.signal
+            headers: { 'Accept': 'application/json' },
+            mode: 'cors',
+            redirect: 'follow',
+            signal: AbortSignal.timeout(45000)
           });
-          
-          clearTimeout(fullFetchTimeout);
           
           if (!fullResponse.ok) throw new Error('ERR_DATA_FETCH');
           const jsonData = await fullResponse.json();
 
-          // التحقق من صحة هيكل البيانات (JSON Parsing Safety)
-          if (!Array.isArray(jsonData)) {
-            throw new Error('ERR_INVALID_FORMAT');
+          // الاستخراج التلقائي لموقع الويب من الخلية J2 (Row 2, Col 10)
+          // Index 1 (Row 2), Index 9 (Col J)
+          if (Array.isArray(jsonData) && jsonData[1] && jsonData[1][9]) {
+            const potentialUrl = jsonData[1][9].toString().trim();
+            if (potentialUrl.startsWith('http')) {
+              setWebsiteUrl(potentialUrl);
+            }
           }
 
-          const currentHash = JSON.stringify(jsonData).length.toString();
+          // --- دالة التحليل الذكي والمتقدم للبيانات (Advanced Robust Parsing) ---
+          const parsePlantData = (raw: any): any[] => {
+            if (!Array.isArray(raw)) return [];
+            if (raw.length === 0) return [];
+
+            // إذا كانت البيانات مصفوفة متداخلة List<List<any>>
+            if (Array.isArray(raw[0])) {
+              const processed: any[] = [];
+              raw.forEach((row, idx) => {
+                try {
+                  if (!Array.isArray(row)) return;
+
+                  // المؤشر 0: الاسم (تخطي إذا كان فارغاً)
+                  const name = row[0] ? row[0].toString().trim() : "";
+                  if (!name) return;
+
+                  // المؤشر 1: السعر (تحويل النصوص الفارغة أو غير الرقمية إلى 0)
+                  let priceVal = row[1] !== undefined && row[1] !== null ? row[1].toString().trim() : "0";
+                  // تنظيف السعر لاستخراج الأرقام فقط
+                  const priceClean = priceVal.replace(/[^0-9.]/g, '');
+                  const price = priceClean === "" ? "0" : priceClean;
+
+                  // بناء الكائن بمفاتيح ثابتة تماشياً مع منطق التطبيق
+                  processed.push({
+                    "اسم_المنتج": name,
+                    "السعر": price,
+                    "التصنيف_الرئيسي": row[2] ? row[2].toString().trim() : "عام",
+                    "التصنيف_الفرعي": row[3] ? row[3].toString().trim() : "",
+                    "رابط_الصورة_1": row[4] ? transformDriveUrl(row[4].toString()) : "",
+                    "رابط_الصورة_2": row[5] ? transformDriveUrl(row[5].toString()) : "",
+                    "رابط_خارجي": row[6] ? transformDriveUrl(row[6].toString()) : "",
+                    "تنبيه": row[7] ? row[7].toString().trim() : "",
+                    "لون_الخلفية": row[8] ? row[8].toString().trim() : "",
+                    "معرف_فريد": `plant-${idx}`
+                  });
+                } catch (e) {
+                  console.warn(`Row ${idx} failed to parse:`, e);
+                }
+              });
+              return processed;
+            }
+
+            // إذا كانت البيانات كائنات بالفعل، نقوم فقط بتنظيف الروابط والأسعار
+            return raw.map(item => {
+              const keys = Object.keys(item);
+              return {
+                ...item,
+                [keys[1]]: item[keys[1]]?.toString().replace(/[^0-9.]/g, '') || "0",
+                [keys[4]]: item[keys[4]] ? transformDriveUrl(item[keys[4]].toString()) : "",
+                [keys[5]]: item[keys[5]] ? transformDriveUrl(item[keys[5]].toString()) : "",
+                [keys[6]]: item[keys[6]] ? transformDriveUrl(item[keys[6]].toString()) : "",
+              };
+            });
+          };
+
+          const finalData = parsePlantData(jsonData);
+
+          const currentHash = JSON.stringify(finalData).length.toString();
 
           if (lastVersion && currentHash === lastVersion && cachedProducts.length > 0) {
              setLoading(false);
              return;
           }
 
-          setData(jsonData);
-          await saveProducts(jsonData);
+          setData(finalData);
+          await saveProducts(finalData);
           await saveMetadata('data_version', currentHash);
           
           setLoading(false);
-          console.log("GAS: Database synced successfully.");
+          console.log("GAS: Database synced and parsed successfully.");
 
           // التخزين المؤقت للصور (Background Tasks)
-          jsonData.forEach((product: any) => {
-            if (product.image) {
+          finalData.forEach((product: any) => {
+            const keys = Object.keys(product);
+            const imageUrl = product[keys[6]] || product[keys[5]] || product[keys[4]];
+            if (imageUrl) {
               (async () => {
                 try {
-                  const cached = await getCachedImage(product.image);
+                  const cached = await getCachedImage(imageUrl);
                   if (!cached) {
-                    const imgRes = await fetch(product.image, { mode: 'cors' });
+                    const imgRes = await fetch(imageUrl, { mode: 'cors' });
                     if (imgRes.ok) {
                       const blob = await imgRes.blob();
-                      await cacheImage(product.image, blob);
+                      await cacheImage(imageUrl, blob);
                     }
                   }
                 } catch (e) { /* silent fail for assets */ }
@@ -2801,9 +3046,10 @@ export default function App() {
           });
         } catch (fetchError: any) {
           console.error("Networking logic failed:", fetchError);
-          // رسالة خطأ صديقة للمستخدم
           let userMessage = "خطأ في الاتصال بالخادم، جارٍ العمل بالبيانات المحفوظة";
-          if (fetchError.name === 'AbortError') userMessage = "اتصال الإنترنت ضعيف جداً، سنحاول لاحقاً";
+          if (fetchError.name === 'AbortError' || fetchError.message?.includes('aborted')) {
+            userMessage = "اتصال الإنترنت ضعيف جداً (انتهت المهلة)، سنحاول لاحقاً";
+          }
           setLoading(false);
         }
       } catch (error) {
@@ -2838,6 +3084,21 @@ export default function App() {
 
   const handleSplashComplete = () => {
     setShowSplash(false);
+    const hasAccepted = localStorage.getItem('zone_terms_accepted') === 'true';
+    
+    if (!hasAccepted) {
+      setShowTerms(true);
+    } else {
+      const savedData = localStorage.getItem('zone_user_data');
+      if (!savedData) {
+        setShowRegistration(true);
+      }
+    }
+  };
+
+  const handleTermsAccepted = () => {
+    localStorage.setItem('zone_terms_accepted', 'true');
+    setShowTerms(false);
     const savedData = localStorage.getItem('zone_user_data');
     if (!savedData) {
       setShowRegistration(true);
@@ -2874,13 +3135,15 @@ export default function App() {
     const colB = keys[1] || 'B'; // Column 2 (Price for Product Card)
     const colC = keys[2] || 'C'; // Column 3 (Level 1 Category)
     const colD = keys[3] || 'D'; // Column 4 (Level 2 Sub-category)
-    const colF = keys[5] || 'F'; // Column 6 (Image 1)
-    const colG = keys[6] || 'G'; // Column 7 (Image 2)
+    const colE = keys[4] || 'E'; // Column 5 (Image URL 1)
+    const colF = keys[5] || 'F'; // Column 6 (Image URL 2)
+    const colG = keys[6] || 'G'; // Column 7 (External Image URL)
     
     const getProductImage = (row: any) => {
       const imgG = transformDriveUrl(row[colG]);
       const imgF = transformDriveUrl(row[colF]);
-      return imgG || imgF || "";
+      const imgE = transformDriveUrl(row[colE]);
+      return imgG || imgF || imgE || "";
     };
 
     let items: any[] = [];
@@ -3380,6 +3643,12 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {showTerms && (
+          <InitialTermsScreen onAccept={handleTermsAccepted} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showRegistration && (
           <RegistrationScreen 
             onComplete={handleRegistrationComplete} 
@@ -3441,6 +3710,12 @@ export default function App() {
       <LegalModal 
         isOpen={isLegalOpen}
         onClose={() => setIsLegalOpen(false)}
+      />
+
+      <AboutModal
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
+        onShowPrivacy={() => setIsLegalOpen(true)}
       />
 
       {!showSplash && !showRegistration && (
@@ -3595,6 +3870,13 @@ export default function App() {
                   )}
                 </AnimatePresence>
               </motion.div>
+
+              <button 
+                onClick={() => setIsAboutOpen(true)}
+                className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
+              >
+                <Info size={26} />
+              </button>
 
               <button 
                 onClick={() => setIsNotificationOpen(true)}
@@ -3853,18 +4135,42 @@ export default function App() {
             )}
           </main>
 
-          {/* Footer with Legal Links */}
-          <footer className="w-full py-8 px-6 bg-white border-t border-gray-100 flex flex-col items-center space-y-4 relative z-10">
-            <button 
-              onClick={() => setIsLegalOpen(true)}
-              className="text-[#064e3b]/60 text-xs font-black py-2 px-6 border border-[#064e3b]/20 rounded-full bg-gray-50 hover:bg-red-50 hover:text-red-700 transition-all shadow-sm"
-            >
-              اتفاقية الاستخدام وسياسة الخصوصية
-            </button>
-            <p className="text-[#064e3b]/40 text-[10px] font-bold">جميع الحقوق محفوظة © مشتل زون 2026</p>
-          </footer>
+          {/* Website Link Section */}
+          {websiteUrl && (
+            <div className="w-full px-6 py-10 flex flex-col items-center">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  try {
+                    window.open(websiteUrl, '_blank');
+                  } catch (e) {
+                    console.error("Failed to open URL:", e);
+                  }
+                }}
+                className="w-full max-w-md p-6 bg-white border-2 border-red-100 rounded-[2.5rem] shadow-xl flex flex-col items-center gap-2 group transition-all"
+              >
+                <div className="flex items-center gap-3 w-full">
+                   <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0">
+                     <Globe size={24} className="text-red-700" />
+                   </div>
+                   <div className="text-right flex-1">
+                     <p className="text-sm font-black text-red-800">تفضلوا بزيارة موقعنا الإلكتروني</p>
+                     <p className="text-[10px] text-gray-400 font-bold tracking-wider">
+                       {(() => {
+                         try { return new URL(websiteUrl).hostname.replace('www.', ''); }
+                         catch { return websiteUrl; }
+                       })()}
+                     </p>
+                   </div>
+                   <ExternalLink size={16} className="text-gray-300 ml-2 shadow-sm" />
+                </div>
+              </motion.button>
+            </div>
+          )}
 
-          <div className="h-6 bg-transparent"></div>
+          {/* Footer removed per user request */}
+          <div className="h-20 bg-transparent" />
         </motion.div>
       )}
     </div>
