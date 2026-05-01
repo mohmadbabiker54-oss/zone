@@ -363,68 +363,33 @@ const InitialTermsScreen = ({ onAccept }: { onAccept: () => void }) => {
           <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-12 h-12 object-contain opacity-20" alt="logo" />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-right" dir="rtl">
-          <section>
-            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-              مقدمة واتفاقية الاستخدام
-            </h3>
-            <p className="text-xs text-gray-600 font-bold leading-relaxed">
-              باستخدامك لتطبيق "مشتل زون"، فإنك تقر بموافقتك الكاملة على شروطنا. نحن نسعى لتقديم أفضل الممارسات الزراعية عبر توفير الشتلات والذكاء الاصطناعي للمساعدة في تشخيص الأمراض وتعزيز المساحات الخضراء.
-            </p>
-          </section>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-right" dir="rtl">
+          <div className="w-full h-[450px] bg-gray-50 rounded-3xl overflow-hidden border border-gray-100 shadow-inner relative">
+            <iframe 
+              src="https://drive.google.com/file/d/1lfUVjH_DexIVj5amzgcFSaqCmWCOExaI/preview" 
+              className="w-full h-full border-0"
+              title="اتفاقية الاستخدام"
+            />
+            {/* Overlay to prevent accidental interactions within iframe while scrolling main content */}
+            <div className="absolute inset-0 pointer-events-none border-4 border-white/50 rounded-3xl"></div>
+          </div>
 
-          <section>
-            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-              سياسة الخصوصية وحماية البيانات
-            </h3>
-            <p className="text-xs text-gray-600 font-bold leading-relaxed">
-              نلتزم بحماية خصوصيتك. نقوم بجمع بيانات الاسم، رقم الهاتف، والموقع الجغرافي فقط لضمان دقة توصيل الطلبات. يتم تشفير هذه البيانات ومعالجتها بسرية تامة، ولن يتم بيعها أو مشاركتها مع أطراف ثالثة لأغراض تسويقية.
-            </p>
-          </section>
-
-          <section className="bg-red-50 p-4 rounded-3xl border border-red-100">
-            <h3 className="text-sm font-black text-red-700 mb-2">الوصول للكاميرا والمعرض</h3>
-            <p className="text-[11px] text-red-900/70 font-bold leading-relaxed">
-              يتطلب نظام "طبيب النبات" الوصول للكاميرا أو معرض الصور لالتقاط صور الأوراق المصابة وتحليلها. نؤكد أن الصور تُستخدم فقط لغرض التشخيص الآلي ولا يتم تخزين صورك الشخصية في أي أرشيف عام.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-              معلومات الموقع (GPS)
-            </h3>
-            <p className="text-xs text-gray-600 font-bold leading-relaxed">
-              يطلب التطبيق إذن الموقع الجغرافي لتحديد مكان التسليم بدقة وتوفير معلومات زراعية تتناسب مع مناخ منطقتك. يمكنك التحكم في هذا الإذن عبر إعدادات جهازك.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-sm font-black text-red-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-              إخلاء المسؤولية
-            </h3>
-            <p className="text-xs text-gray-600 font-bold leading-relaxed">
-              التشخيصات المقدمة عبر الذكاء الاصطناعي هي نصائح استرشادية مبنية على البيانات المتاحة. في حالات الإصابات الحرجة، ننصح دائماً بمشاورة خبير زراعي ميداني.
-            </p>
-          </section>
-
-          <div className="p-4 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+          <div className="p-4 bg-red-50/50 rounded-3xl border border-red-100/50">
             <label className="flex items-center gap-3 cursor-pointer group">
               <div className="flex-1 text-right">
-                <span className="text-[11px] font-black text-gray-700 group-hover:text-red-700 transition-colors">أقر بأنني قرأت وفهمت سياسة الخصوصية وأوافق على شروط الاستخدام بالكامل</span>
+                <span className="text-[11px] font-black text-gray-700 group-hover:text-red-700 transition-colors italic">
+                  أقر بموافقتي الكاملة على كافة بنود اتفاقية الاستخدام وسياسة الخصوصية المعروضة أعلاه والمعتمدة من مشتل زون.
+                </span>
               </div>
-              <div className="relative w-7 h-7">
+              <div className="relative w-8 h-8 shrink-0">
                 <input 
                   type="checkbox" 
                   className="peer hidden" 
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
-                <div className="w-full h-full border-2 border-gray-300 rounded-lg bg-white peer-checked:bg-red-700 peer-checked:border-red-700 transition-all flex items-center justify-center">
-                  <Check className="text-white w-4 h-4 opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all" />
+                <div className="w-full h-full border-2 border-gray-300 rounded-xl bg-white peer-checked:bg-red-700 peer-checked:border-red-700 transition-all flex items-center justify-center shadow-sm">
+                  <Check className="text-white w-5 h-5 opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all" />
                 </div>
               </div>
             </label>
@@ -2681,58 +2646,25 @@ const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
             <X size={24} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 text-right" dir="rtl">
-          <section>
-            <h3 className="text-lg font-black text-red-700 mb-3 border-b-2 border-red-100 pb-2">1. اتفاقية الاستخدام ونطاق الخدمة</h3>
-            <ul className="space-y-4 text-gray-700 font-bold leading-relaxed">
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>يقدم تطبيق "زون" استشارات زراعية مبنية على الذكاء الاصطناعي، وخدمات بيع الشتلات، وتصاميم اللاندسكيب في السودان.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>تشخيص أمراض النباتات عبر الكاميرا هو وسيلة مساعدة واسترشادية تهدف لنشر الوعي الزراعي.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>المستخدم مسؤول مسؤولية كاملة عن دقة بيانات التواصل والموقع (GPS) المرفقة بطلبات الشراء.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0" />
-                <span>حقوق ملكية الصور والمحتوى والمختبرات البرمجية داخل التطبيق محفوظة حصرياً لإدارة "مشتل زون".</span>
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h3 className="text-lg font-black text-green-700 mb-3 border-b-2 border-green-100 pb-2">2. سياسة الخصوصية وحقوق البيانات</h3>
-            <ul className="space-y-4 text-gray-700 font-bold leading-relaxed">
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>نجمع بياناتك الشخصية (الاسم والواتساب) لغرض التوثيق والتواصل معك بخصوص طلباتك فقط.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>نطلب إذن الوصول للكاميرا ومعرض الصور لتمكين ميزة تحليل النباتات؛ لا نطلع على صورك الشخصية الخارجة عن هذا النطاق.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>صور إشعارات الدفع المرفوعة تُعامل بسرية مصرفية تامة وتُستخدم حصرياً لتدقيق الحسابات المالية.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>يتم استخدام بيانات الموقع الجغرافي لتنسيق عمليات التوصيل اللوجستية وتحديد تكلفة النقل بدقة.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
-                <span>لا يتم تخزين بياناتك الحساسة في خوادم مفتوحة، ونستخدم بروتوكولات حماية متقدمة لمنع أي تسريب للمعلومات.</span>
-              </li>
-            </ul>
-          </section>
+        <div className="flex-1 overflow-y-auto p-4 text-right" dir="rtl">
+          <div className="w-full h-[500px] bg-gray-50 rounded-3xl overflow-hidden border border-gray-200 shadow-inner mb-6">
+            <iframe 
+              src="https://drive.google.com/file/d/1lfUVjH_DexIVj5amzgcFSaqCmWCOExaI/preview" 
+              className="w-full h-full border-0"
+              title="اتفاقية الاستخدام"
+            />
+          </div>
 
           <div className="bg-gray-100 p-6 rounded-[2rem] text-center border border-gray-200">
-            <p className="text-xs text-gray-400 font-black mb-1">الإصدار القانوني المعتمد 2.5</p>
-            <p className="text-[10px] text-gray-400 font-bold">آخر تحديث: أبريل 2026 - مشتل زون المطور (السودان)</p>
+            <p className="text-xs text-gray-400 font-black mb-1">المستند القانوني المعتمد من Google Drive</p>
+            <p className="text-[10px] text-gray-400 font-bold mb-3">آخر تحديث: مايو 2026 - مشتل زون المطور (السودان)</p>
+            <button 
+              onClick={() => window.open('https://drive.google.com/file/d/1lfUVjH_DexIVj5amzgcFSaqCmWCOExaI/view?usp=drive_link', '_blank')}
+              className="text-[10px] font-black text-red-700 underline flex items-center justify-center gap-1 mx-auto hover:text-red-900 transition-colors"
+            >
+              <ExternalLink size={12} />
+              فتح الرابط المباشر للمستند الأصلي
+            </button>
           </div>
         </div>
         <button onClick={onClose} className="m-6 h-14 bg-red-700 text-white rounded-2xl font-black shadow-xl">موافق، إغلاق</button>
@@ -2980,7 +2912,7 @@ export default function App() {
                   processed.push({
                     "اسم_المنتج": name,
                     "السعر": price,
-                    "التصنيف_الرئيسي": row[2] ? row[2].toString().trim() : "عام",
+                    "التصنيف_الرئيسي": row[2] ? row[2].toString().trim() : "",
                     "التصنيف_الفرعي": row[3] ? row[3].toString().trim() : "",
                     "رابط_الصورة_1": row[4] ? transformDriveUrl(row[4].toString()) : "",
                     "رابط_الصورة_2": row[5] ? transformDriveUrl(row[5].toString()) : "",
@@ -3149,12 +3081,12 @@ export default function App() {
     let items: any[] = [];
 
     if (currentLevel === 1) {
-      const unique = Array.from(new Set(data.map(row => row[colC]).filter(Boolean)));
+      const unique = Array.from(new Set(data.map(row => row[colC]).filter(val => val && val !== 'عام')));
       items = unique.map(val => ({ type: 'level1', label: val, id: val }));
     } else if (currentLevel === 2) {
       const filtered = data.filter(row => row[colC] === filters[0]);
       // Get unique non-empty sub-categories
-      const unique = Array.from(new Set(filtered.map(row => row[colD]).filter(Boolean)));
+      const unique = Array.from(new Set(filtered.map(row => row[colD]).filter(val => val && val !== 'عام')));
       
       // Check if there are rows where Column D is empty for this Category
       const hasEmptySubCategory = filtered.some(row => !row[colD] || String(row[colD]).trim() === '');
