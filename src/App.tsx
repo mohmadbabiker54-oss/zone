@@ -1,12 +1,20 @@
-import { ReactNode, useState, useEffect, useRef, useMemo, FormEvent, ChangeEvent } from 'react';
+import React, { ReactNode, useState, useEffect, useRef, useMemo, FormEvent, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Papa from 'papaparse';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { App as CapApp } from '@capacitor/app';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource as CapacitorCameraSource } from '@capacitor/camera';
+import { defineCustomElements } from '@ionic/pwa-elements/loader';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle as LeafletCircle } from 'react-leaflet';
+
+// Initialize PWA elements
+if (typeof window !== 'undefined') {
+  defineCustomElements(window);
+}
 import L from 'leaflet';
 import { LocationService, LocationResult } from './services/locationService';
 
@@ -52,6 +60,7 @@ import {
   ShoppingCart, 
   DollarSign,
   ChevronLeft,
+  Navigation,
   Lock,
   Search,
   X,
@@ -360,7 +369,7 @@ const InitialTermsScreen = ({ onAccept }: { onAccept: () => void }) => {
               <p className="text-[10px] font-bold text-gray-500 italic">مشتل زون - سياسة الخصوصية</p>
             </div>
           </div>
-          <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-12 h-12 object-contain opacity-20" alt="logo" />
+          <img src="https://i.ibb.co/qFgDcx2b/logo.png" className="w-12 h-12 object-contain opacity-20" alt="logo" />
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4 text-right" dir="rtl">
@@ -460,7 +469,7 @@ const RegistrationScreen = ({ onComplete, onShowLegal }: { onComplete: (data: Us
             animate={{ scale: 1 }}
             className="w-24 h-24 bg-red-700 rounded-3xl mx-auto flex items-center justify-center shadow-2xl mb-6 border-b-4 border-red-900 overflow-hidden"
           >
-             <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-full h-full object-contain p-1 rounded-3xl" alt="logo" />
+             <img src="https://i.ibb.co/qFgDcx2b/logo.png" className="w-full h-full object-contain p-1 rounded-3xl" alt="logo" />
           </motion.div>
           <h1 className="text-3xl font-black text-white tracking-tight drop-shadow-md">مرحباً بك في زون</h1>
           <p className="text-white/60 font-bold">يرجى إدخال بياناتك للمرة الأولى</p>
@@ -552,6 +561,14 @@ const RegistrationScreen = ({ onComplete, onShowLegal }: { onComplete: (data: Us
 };
 
 const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInvoice }: { isOpen: boolean, onClose: () => void, cart: any[], onRemove: (index: number) => void, onClearAll: () => void, onProceedToInvoice: () => void }) => {
+  useEffect(() => {
+    if (isOpen) {
+      const handleBack = () => onClose();
+      window.addEventListener('zone-back-button', handleBack);
+      return () => window.removeEventListener('zone-back-button', handleBack);
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const total = cart.reduce((acc, item) => acc + (parseFloat(item.price) * 1000 || 0), 0);
@@ -740,6 +757,14 @@ const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInv
 
 
 const InvoiceModal = ({ isOpen, onClose, onProceedToPayment, cart, userData }: { isOpen: boolean, onClose: () => void, onProceedToPayment: () => void, cart: any[], userData: UserData | null }) => {
+  useEffect(() => {
+    if (isOpen) {
+      const handleBack = () => onClose();
+      window.addEventListener('zone-back-button', handleBack);
+      return () => window.removeEventListener('zone-back-button', handleBack);
+    }
+  }, [isOpen, onClose]);
+
   const date = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
   
   const total = cart.reduce((acc, item) => acc + (parseFloat(item.price) * 1000 || 0), 0);
@@ -781,7 +806,7 @@ const InvoiceModal = ({ isOpen, onClose, onProceedToPayment, cart, userData }: {
         <div className="p-8 bg-white relative min-h-[1000px] flex flex-col">
           {/* Watermark */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05]">
-            <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" alt="watermark" className="w-4/5" />
+            <img src="https://i.ibb.co/qFgDcx2b/logo.png" alt="watermark" className="w-4/5" />
           </div>
 
           {/* Header */}
@@ -791,7 +816,7 @@ const InvoiceModal = ({ isOpen, onClose, onProceedToPayment, cart, userData }: {
               <p className="text-sm font-black text-gray-800 tracking-widest">AGRIBUSINESS</p>
             </div>
             <div className="flex flex-col items-center">
-              <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" alt="logo" className="w-16 h-16 object-contain" />
+              <img src="https://i.ibb.co/qFgDcx2b/logo.png" alt="logo" className="w-16 h-16 object-contain" />
             </div>
             <div className="text-right">
               <h1 className="text-2xl font-black text-green-800">مشتل زون</h1>
@@ -979,68 +1004,76 @@ const MapEvents = ({ onMapClick }: { onMapClick: (lat: number, lng: number) => v
   return null;
 };
 
-const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: boolean, onClose: () => void, userData: UserData | null, cart: any[], onSuccess: () => void }) => {
+const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto, gardenNotes }: { isOpen: boolean, onClose: () => void, userData: UserData | null, cart: any[], onSuccess: () => void, gardenPhoto: string | null, gardenNotes: string }) => {
   const [isCopying, setIsCopying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationResult | null>(null);
-  const [markerPos, setMarkerPos] = useState<[number, number]>([15.6550, 32.4850]); // Precise Omdurman/Nile Area
-  const [mapZoom, setMapZoom] = useState(17);
+  const [markerPos, setMarkerPos] = useState<[number, number] | null>(null);
+  const [mapZoom, setMapZoom] = useState(18);
   const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard'); 
-  const [accuracyWarning, setAccuracyWarning] = useState<string | null>(null);
+  const [accuracyWarning, setAccuracyWarning] = useState<string | null>("جاري جلب موقعك بدقة GPS عالية... يرجى الانتظار.");
+  const [gpsLoading, setGpsLoading] = useState(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfContentRef = useRef<HTMLDivElement>(null);
   const mapContentRef = useRef<HTMLDivElement>(null);
   const receiptContentRef = useRef<HTMLDivElement>(null);
   const invoiceContentRef = useRef<HTMLDivElement>(null);
+  const gardenContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
+      const handleBack = () => onClose();
+      window.addEventListener('zone-back-button', handleBack);
+
       const fetchInitialLoc = async () => {
-        const loc = await LocationService.getCurrentLocation();
+        setGpsLoading(true);
+        setAccuracyWarning("جاري جلب أقصى إشارة GPS ممكنة... يرجى الوقوف في مكان مفتوح.");
         
-        if (loc.coords) {
-          // USE DEVICE GPS ACCURACY
-          const lat = loc.coords.latitude;
-          const lng = loc.coords.longitude;
-          const acc = loc.coords.accuracy || 1000;
+        try {
+          const loc = await LocationService.getCurrentLocation();
           
-          // Removal of strict boundary check to avoid "computer-based" coordinate feel
-          // We now trust the mobile device's High Accuracy GPS
-          
-          if (acc > 500) {
-            // Low accuracy signal
-            setMarkerPos([lat, lng]); 
-            setMapZoom(16);
-            setAccuracyWarning("إشارة الموقع ضعيفة حالياً. يرجى سحب الدبوس يدوياً ووضعه (أمام باب المكان) تماماً.");
-          } else if (acc <= 30) {
-            // High precision lock (GPS verified)
+          if (loc.coords) {
+            const lat = loc.coords.latitude;
+            const lng = loc.coords.longitude;
+            const acc = loc.coords.accuracy || 1000;
+            
             setMarkerPos([lat, lng]);
-            setMapZoom(18); 
             setCurrentLocation(loc);
-            setAccuracyWarning("تم تحديد موقعك بدقة GPS عالية؛ يرجى الآن سحب الدبوس (أمام بابك) لضمان وصول المندوب.");
+            setGpsLoading(false);
+            setMapZoom(19); // Max street precision
+
+            if (acc <= 15) {
+              setAccuracyWarning("دقة فائقة (15م)! يرجى سحب الدبوس ليكون (فوق باب منزلك) تماماً.");
+            } else if (acc <= 35) {
+              setAccuracyWarning("تم تحديد موقعك بدقة جيدة. فضلاً، حرك الدبوس ليكون أمام بابك بالضبط.");
+            } else {
+              setAccuracyWarning("دقة الـ GPS منخفضة؛ يرجى استخدام (نمط القمر الصناعي) ووضع الدبوس أمام بابك يدوياً.");
+              setMapMode('satellite');
+            }
           } else {
-            // Moderate lock
-            setMarkerPos([lat, lng]);
-            setMapZoom(17); 
-            setCurrentLocation(loc);
-            setAccuracyWarning("تم العثور على موقعك؛ يرجى التأكد من وضع الدبوس (أمام باب الاستلام) بدقة.");
+            setGpsLoading(false);
+            setAccuracyWarning(loc.error || "فشل تحديد الموقع تلقائياً. يرجى تفعيل الـ GPS والنقر على الخريطة لتحديد مكانك يدوياً.");
           }
-        } else if (loc.error) {
-          setMarkerPos([15.6550, 32.4850]);
-          setMapZoom(16);
-          setAccuracyWarning("تعذر جلب موقعك بدقة. تم فتح الخريطة في أم درمان؛ يرجى تحديد موقعك يدوياً.");
+        } catch (error) {
+          setGpsLoading(false);
+          setAccuracyWarning("حدث خطأ أثناء جلب الموقع. يرجى تحديد موقعك يدوياً على الخريطة.");
         }
       };
       
       fetchInitialLoc();
+
+      return () => window.removeEventListener('zone-back-button', handleBack);
+    } else {
+      setMarkerPos(null);
+      setGpsLoading(true);
     }
   }, [isOpen]);
 
   const handleManualMapUpdate = (lat: number, lng: number) => {
     setMarkerPos([lat, lng]);
-    setMapZoom(18); // STREET LEVEL (Safer than 19 for tile availability)
+    setMapZoom(19); // STREET PRECISION
     setAccuracyWarning(null);
     setCurrentLocation({
       coords: { latitude: lat, longitude: lng, accuracy: 0 },
@@ -1132,6 +1165,20 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
           currentPosition += pdfPageHeight;
         }
       }
+
+      // 4. Capture Garden Section (If exists)
+      if ((gardenPhoto || gardenNotes) && gardenContentRef.current) {
+        pdf.addPage();
+        const canvas = await html2canvas(gardenContentRef.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: 800
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfPageHeight), undefined, 'FAST');
+      }
       
       // Set Metadata
       pdf.setProperties({
@@ -1145,57 +1192,56 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
       const fileName = `${userData.name}_${userData.fatherName}_${dateStr}-${userData.whatsapp}.pdf`.replace(/\s+/g, '_');
       
       if (userData && fileName) {
+        // --- 1. SEND TO MANAGEMENT (GOOGLE DRIVE) ---
         // Prepare PDF for Google Apps Script
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
         
-        // Send to Google Apps Script (doPost)
         try {
+          // Standard fetch with redirection support (gas usually redirects)
           const response = await fetch(SYSTEM_GAS_URL, {
             method: 'POST',
+            mode: 'no-cors', // Standard for GAS simple POST if no custom headers needed
             headers: {
-              'Content-Type': 'text/plain;charset=utf-8',
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               pdfBase64,
-              fileName
+              fileName,
+              action: 'management_backup',
+              clientName: `${userData.name} ${userData.fatherName}`,
+              phone: userData.whatsapp,
+              timestamp: new Date().toISOString()
             })
           });
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log("PDF sent to Google Drive successfully:", result);
-          } else {
-            console.error("Server responded with an error");
-          }
-        } catch (err) {
-          console.error("Error sending PDF to Google Drive:", err);
-        }
-      }
-
-      // HANDLE MOBILE DOWNLOAD / SAVING
-      if (Capacitor.isNativePlatform()) {
-        const base64Data = pdf.output('datauristring').split(',')[1];
-        try {
-          const result = await Filesystem.writeFile({
-            path: fileName,
-            data: base64Data,
-            directory: Directory.Documents,
-            recursive: true
-          });
           
-          await Share.share({
-            title: 'Zone Invoice',
-            text: 'إليك فاتورة مشترياتك من زون',
-            url: result.uri,
-            dialogTitle: 'مشاركة الفاتورة'
-          });
+          console.log("PDF delivery signaled to Administration Gateway.");
         } catch (err) {
-          console.error("Native file save/share failed:", err);
-          // Fallback to standard save for some cases
+          console.error("Critical: Management sync failed:", err);
+        }
+
+        // --- 2. HANDLE LOCAL DOWNLOAD (MOBILE / WEB) ---
+        if (Capacitor.isNativePlatform()) {
+          const base64Data = pdf.output('datauristring').split(',')[1];
+          try {
+            // Write to local filesystem for user access
+            await Filesystem.writeFile({
+              path: `Zone_${fileName}`,
+              data: base64Data,
+              directory: Directory.Documents,
+              recursive: true
+            });
+            
+            // Notification of success instead of Share sheet (which includes WhatsApp)
+            console.log("PDF Saved locally to Documents folder.");
+          } catch (err) {
+            console.error("Native file process failed:", err);
+            // Fallback
+            pdf.save(fileName);
+          }
+        } else {
+          // Web fallback
           pdf.save(fileName);
         }
-      } else {
-        pdf.save(fileName);
       }
       
       onSuccess();
@@ -1347,9 +1393,9 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                   <Map className="text-white" size={24} />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-white text-base font-black leading-tight">هام جداً لضمان التوصيل:</p>
+                  <p className="text-white text-base font-black leading-tight">تنبيه حاسم لضمان التوصيل:</p>
                   <p className="text-blue-100 text-xs font-bold leading-relaxed">
-                    يجب عليك سحب "الدبوس الأحمر" على الخريطة ووضعه يدوياً <span className="text-yellow-400 underline">(أمام باب منزلك)</span> تماماً. المندوب سيعتمد على هذا الموقع الجغرافي للوصول إليك.
+                    المندوب سيصل بالضبط إلى مكان "الدبوس الأحمر". يرجى وضعه <span className="text-yellow-400 underline font-black">(أمام باب منزلك تماماً)</span>. ننصح باستخدام "نمط القمر الصناعي" للتأكد من المنزل.
                   </p>
                 </div>
               </div>
@@ -1357,10 +1403,10 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
               <div className="flex items-center justify-between mb-4 px-2">
                 <div className="text-right">
                   <h4 className="text-white font-black text-lg flex items-center space-x-reverse space-x-2">
-                    <Globe size={20} className={mapMode === 'satellite' ? 'text-blue-400' : 'text-yellow-500'} />
-                    <span>تحديد موقع باب المنزل بدقة</span>
+                    <Globe size={20} className={mapMode === 'satellite' ? 'text-blue-400 animate-pulse' : 'text-yellow-500'} />
+                    <span>تحديد نقطة "أمام باب المنزل"</span>
                   </h4>
-                  <p className="text-yellow-500/60 text-[10px] font-bold">يرجى تحريك الخريطة أو سحب الدبوس</p>
+                  <p className="text-yellow-500/60 text-[10px] font-bold">حرك الدبوس فوق بابك (استخدم صور الأقمار الصناعية)</p>
                 </div>
                 {markerPos && markerPos.length === 2 && (
                    <div className="bg-green-500/10 px-3 py-1 rounded-full border border-green-500/30">
@@ -1373,55 +1419,103 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
 
               {/* Interactive Map */}
               <div className="w-full h-[450px] rounded-2xl overflow-hidden border-2 border-white/20 relative z-0 shadow-inner bg-gray-900 group">
-                <MapContainer center={markerPos} zoom={mapZoom} zoomControl={false} style={{ height: '100%', width: '100%' }}>
-                  {mapMode === 'standard' ? (
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                {markerPos ? (
+                  <MapContainer center={markerPos} zoom={mapZoom} zoomControl={false} style={{ height: '100%', width: '100%' }}>
+                    {mapMode === 'standard' ? (
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      />
+                    ) : (
+                      <TileLayer
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        attribution='Tiles &copy; Esri'
+                      />
+                    )}
+                    <MapController center={markerPos} zoom={mapZoom} />
+                    <MapEvents onMapClick={handleManualMapUpdate} />
+                    {currentLocation?.coords?.accuracy && markerPos && (
+                      <LeafletCircle
+                        center={markerPos}
+                        radius={currentLocation.coords.accuracy}
+                        pathOptions={{ 
+                          fillColor: '#3b82f6', 
+                          fillOpacity: 0.15, 
+                          color: '#3b82f6',
+                          weight: 1,
+                          dashArray: '5, 5'
+                        }}
+                      />
+                    )}
+                    {markerPos && markerPos.length === 2 && (
+                      <Marker 
+                        position={markerPos} 
+                        draggable={true}
+                        eventHandlers={{
+                          dragend: (e) => {
+                            const marker = e.target;
+                            const pos = marker.getLatLng();
+                            handleManualMapUpdate(pos.lat, pos.lng);
+                          },
+                        }}
+                      />
+                    )}
+                  </MapContainer>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gray-900">
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full mb-6"
                     />
-                  ) : (
-                    <TileLayer
-                      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                      attribution='Tiles &copy; Esri'
-                    />
-                  )}
-                  <MapController center={markerPos} zoom={mapZoom} />
-                  <MapEvents onMapClick={handleManualMapUpdate} />
-                  {markerPos && markerPos.length === 2 && (
-                    <Marker 
-                      position={markerPos} 
-                      draggable={true}
-                      eventHandlers={{
-                        dragend: (e) => {
-                          const marker = e.target;
-                          const pos = marker.getLatLng();
-                          handleManualMapUpdate(pos.lat, pos.lng);
-                        },
-                      }}
-                    />
-                  )}
-                </MapContainer>
+                    <p className="text-white font-black text-xl mb-2">جاري تحديد الموقع بدقة فدائية...</p>
+                    <p className="text-white/60 text-sm">يرجى التأكد من تشغيل الـ GPS والسماح للمتصفح بالوصول للموقع</p>
+                    
+                    {!gpsLoading && (
+                      <button 
+                        onClick={async () => {
+                          setAccuracyWarning("جاري جلب موقعك بدقة فدائية...");
+                          const loc = await LocationService.getCurrentLocation();
+                          if (loc.coords) {
+                            handleManualMapUpdate(loc.coords.latitude, loc.coords.longitude);
+                            setCurrentLocation(loc); // Ensure current location state is updated for circle rendering
+                            setAccuracyWarning("تم جلب الموقع بنجاح. فضلاً، اسحب الدبوس فوق بابك تماماً.");
+                          } else {
+                            // Neutral Sudan center if everything fails, but zoom out 
+                            handleManualMapUpdate(15.0, 30.0);
+                            setMapZoom(6);
+                            setAccuracyWarning(loc.error || "تعذر جلب الموقع. تم فتح الخريطة؛ يرجى البحث عن منزلك يدوياً.");
+                          }
+                        }}
+                        className="mt-6 bg-yellow-500 text-black px-8 py-3 rounded-2xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                      >
+                        اضغط لفتح الخريطة يدوياً
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Accuracy Pulse Layer - Custom Visual Feedback */}
-                <div className="absolute inset-0 pointer-events-none z-[401] flex items-center justify-center">
-                    <div className="relative">
-                       {/* Center Indicator */}
-                       <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-[0_0_10px_#fbbf24]" />
-                       {/* Pulsing ring proportional to accuracy */}
-                       {currentLocation?.coords?.accuracy && (
-                         <motion.div 
-                           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
-                           transition={{ duration: 2, repeat: Infinity }}
-                           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-2 border-blue-400 rounded-full"
-                           style={{ 
-                             width: `${Math.max(20, Math.min(200, currentLocation.coords.accuracy * 2))}px`, 
-                             height: `${Math.max(20, Math.min(200, currentLocation.coords.accuracy * 2))}px` 
-                           }}
-                         />
-                       )}
-                    </div>
-                </div>
-
+                {markerPos && (
+                  <div className="absolute inset-0 pointer-events-none z-[401] flex items-center justify-center">
+                      <div className="relative">
+                         {/* Center Indicator */}
+                         <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-[0_0_10px_#fbbf24]" />
+                         {/* Pulsing ring proportional to accuracy */}
+                         {currentLocation?.coords?.accuracy && (
+                           <motion.div 
+                             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
+                             transition={{ duration: 2, repeat: Infinity }}
+                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-2 border-blue-400 rounded-full"
+                             style={{ 
+                               width: `${Math.max(20, Math.min(200, currentLocation.coords.accuracy * 2))}px`, 
+                               height: `${Math.max(20, Math.min(200, currentLocation.coords.accuracy * 2))}px` 
+                             }}
+                           />
+                         )}
+                      </div>
+                  </div>
+                )}
                 {/* Floating Instruction Overlay */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-8 pointer-events-none z-[402]">
                    <motion.div 
@@ -1463,18 +1557,28 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                     } shadow-xl font-bold`}
                   >
                     <Globe size={18} />
-                    <span className="text-xs">{mapMode === 'satellite' ? 'نمط القمر الصناعي' : 'نمط الخريطة'}</span>
+                    <span className="text-xs">{mapMode === 'satellite' ? 'نمط القمر الصناعي' : 'نمط الخريطة (ينصح بالقمر الصناعي)'}</span>
                   </button>
                   
                   <button
-                    onClick={() => {
-                      setMarkerPos([15.6333, 32.4833]);
-                      setMapZoom(16);
+                    onClick={async () => {
+                      setAccuracyWarning("جاري تحديث موقعك بدقة عالية...");
+                      const loc = await LocationService.getCurrentLocation();
+                      if (loc.coords) {
+                        setMarkerPos([loc.coords.latitude, loc.coords.longitude]);
+                        setCurrentLocation(loc);
+                        setMapZoom(19);
+                        setAccuracyWarning("تم تحديث الموقع بنجاح. ضعه أمام الباب.");
+                      } else if (loc.error) {
+                        setAccuracyWarning(loc.error);
+                      } else {
+                        setAccuracyWarning("تعذر جلب الموقع. يرجى المحاولة مرة أخرى.");
+                      }
                     }}
-                    className="bg-black/80 text-white px-3 py-2 rounded-xl border border-yellow-600/50 text-[10px] font-black flex items-center space-x-reverse space-x-2 shadow-2xl"
+                    className="bg-yellow-500 text-black px-3 py-2 rounded-xl border border-black/20 text-[10px] font-black flex items-center space-x-reverse space-x-2 shadow-2xl hover:scale-105 transition-all"
                   >
-                    <Home size={14} />
-                    <span>توسيط أم درمان</span>
+                    <Navigation size={14} className="animate-pulse" />
+                    <span>تحديد موقعي الآن</span>
                   </button>
                 </div>
 
@@ -1503,9 +1607,12 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
 
                   <button
                     onClick={async () => {
+                      setAccuracyWarning("جاري البحث عن موقعك...");
                       const loc = await LocationService.getCurrentLocation();
                       if (loc.coords) {
                         handleManualMapUpdate(loc.coords.latitude, loc.coords.longitude);
+                      } else if (loc.error) {
+                        setAccuracyWarning(loc.error);
                       }
                     }}
                     className="bg-white text-black p-4 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.4)] border-4 border-yellow-600 hover:bg-yellow-50 transition-all flex items-center"
@@ -1571,11 +1678,11 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
             </motion.button>
 
             <motion.button
-              disabled={!receipt || isGenerating}
+              disabled={!receipt || isGenerating || !markerPos}
               whileTap={{ scale: 0.98 }}
               onClick={generateSecurePDF}
               className={`w-full h-16 rounded-2xl font-black text-lg shadow-2xl transition-all flex items-center justify-center space-x-reverse space-x-3 ${
-                receipt && !isGenerating
+                receipt && !isGenerating && markerPos
                 ? 'bg-red-600 text-white border-b-4 border-red-900' 
                 : 'bg-gray-700 text-white/30 cursor-not-allowed'
               }`}
@@ -1589,6 +1696,12 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                 </>
               )}
             </motion.button>
+            
+            {!markerPos && (
+              <p className="mt-4 text-yellow-500 text-[12px] font-black text-center bg-yellow-500/10 py-3 rounded-xl border border-yellow-500/30">
+                ⚠️ يرجى تحديد موقعك يدوياً على الخريطة (فوق باب منزلك) لتتمكن من المتابعة
+              </p>
+            )}
           </div>
         </div>
 
@@ -1601,7 +1714,7 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                 <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#065f46' }}>KILIMANJARO ZONE</h1>
                 <p style={{ fontSize: '14px', fontWeight: '900', color: '#1f2937', letterSpacing: '0.1em' }}>AGRIBUSINESS</p>
               </div>
-              <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" alt="logo" style={{ width: '80px', height: '80px' }} />
+              <img src="https://i.ibb.co/qFgDcx2b/logo.png" alt="logo" style={{ width: '80px', height: '80px' }} />
               <div style={{ textAlign: 'right' }}>
                 <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#065f46' }}>مشتل زون</h1>
                 <p style={{ fontSize: '14px', fontWeight: '900', color: '#1f2937' }}>للأعمال الزراعية</p>
@@ -1667,7 +1780,7 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                 <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#065f46' }}>KILIMANJARO ZONE</h1>
                 <p style={{ fontSize: '14px', fontWeight: '900', color: '#1f2937', letterSpacing: '0.1em' }}>AGRIBUSINESS</p>
               </div>
-              <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" alt="logo" style={{ width: '80px', height: '80px' }} />
+              <img src="https://i.ibb.co/qFgDcx2b/logo.png" alt="logo" style={{ width: '80px', height: '80px' }} />
               <div style={{ textAlign: 'right' }}>
                 <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#065f46' }}>مشتل زون</h1>
                 <p style={{ fontSize: '14px', fontWeight: '900', color: '#1f2937' }}>للأعمال الزراعية</p>
@@ -1724,6 +1837,36 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess }: { isOpen: 
                 </div>
                 <p style={{ fontSize: '12px', fontWeight: '900' }}>الختم الإلكتروني المعتمد</p>
               </div>
+            </div>
+          </div>
+
+          {/* Page 4: Garden Design Data Template (Hidden) */}
+          <div ref={gardenContentRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Cairo, sans-serif' }} dir="rtl">
+            <div style={{ borderBottom: '4px solid #065f46', paddingBottom: '20px', marginBottom: '30px' }}>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#065f46' }}>تفاصيل طلب تنسيق الحدائق</h2>
+              <p style={{ fontSize: '14px', color: '#666' }}>مرفقات إضافية خاصة بالطلب</p>
+            </div>
+
+            {gardenPhoto && (
+              <div style={{ marginBottom: '30px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#1f2937', marginBottom: '15px' }}>صور الحديقة الحالية:</h3>
+                <div style={{ width: '100%', borderRadius: '15px', overflow: 'hidden', border: '2px solid #e5e7eb' }}>
+                  <img src={gardenPhoto} style={{ width: '100%', height: 'auto' }} alt="Garden Layout" />
+                </div>
+              </div>
+            )}
+
+            {gardenNotes && (
+              <div style={{ padding: '25px', backgroundColor: '#f0fdf4', borderRadius: '15px', border: '2px solid #bbf7d0' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#166534', marginBottom: '10px' }}>ملاحظات العميل:</h3>
+                <p style={{ fontSize: '18px', color: '#14532d', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                  {gardenNotes}
+                </p>
+              </div>
+            )}
+
+            <div style={{ marginTop: '50px', fontSize: '12px', color: '#999', textAlign: 'center' }}>
+              <p>تم إرسال هذه المرفقات كجزء من عملية الأرشفة الذكية لنظام زون</p>
             </div>
           </div>
         </div>
@@ -1783,13 +1926,14 @@ const CachedImage = ({ src, alt, className, style, referrerPolicy }: { src: stri
   );
 };
 
-const ProductCard = ({ name, price, image, onAddToCart }: { name: string, price: string, image: string, onAddToCart: () => void, key?: any }) => {
+const ProductCard = ({ name, price, image, onAddToCart, onImageClick }: { name: string, price: string, image: string, onAddToCart: () => void, onImageClick?: (img: string) => void, key?: any }) => {
   const [isFlashing, setIsFlashing] = useState(false);
   const [isCharging, setIsCharging] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chargeTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(e => console.log("Audio play failed:", e));
@@ -1821,9 +1965,9 @@ const ProductCard = ({ name, price, image, onAddToCart }: { name: string, price:
       viewport={{ once: true }}
       animate={isCharging ? { scale: 0.98, rotateX: -5 } : { scale: 1 }}
       transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
-      className="relative w-full h-[60vh] sm:h-[80vh] rounded-[2.5rem] overflow-hidden flex flex-col group cursor-pointer perspective-1000 preserve-3d"
+      className="relative w-full h-[55vh] sm:h-[80vh] rounded-[2.5rem] overflow-hidden flex flex-col group cursor-pointer perspective-1000 preserve-3d"
       style={{
-        background: 'rgba(6, 78, 59, 0.25)',
+        background: 'rgba(6, 78, 59, 0.45)',
         backdropFilter: 'blur(25px)',
         boxShadow: isCharging 
           ? '0 80px 120px -20px rgba(16, 185, 129, 0.5), inset 0 0 30px rgba(255,255,255,0.2)' 
@@ -1846,36 +1990,43 @@ const ProductCard = ({ name, price, image, onAddToCart }: { name: string, price:
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-25deg] pointer-events-none z-10"
       />
 
-      {/* Image Layer (80%) - Carved/Rising effect */}
-      <div className="relative h-[80%] w-full p-4 overflow-hidden">
-          <motion.div className="w-full h-full rounded-[2rem] overflow-hidden shadow-[inset_0_0_40px_rgba(0,0,0,0.6)] bg-black/20 relative">
+      {/* Image Layer (70%) - Carved/Rising effect */}
+      <div className="relative h-[70%] w-full flex items-center justify-center p-3 shrink-0">
+          <motion.div 
+            className="w-full h-full rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] relative group/img cursor-zoom-in"
+            whileHover={{ scale: 1.04, rotate: 1 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onImageClick) onImageClick(image);
+            }}
+          >
             <CachedImage 
               src={image} 
               alt={name} 
-              className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity"
+              className="w-full h-full object-cover transition-all duration-700 group-hover/img:scale-110 group-hover/img:brightness-110"
               referrerPolicy="no-referrer"
             />
-            {/* Inner Shadow Overlay */}
-            <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(0,0,0,0.4)] pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute inset-0 shadow-[inset_0_0_50px_rgba(0,0,0,0.4)] pointer-events-none" />
           </motion.div>
       </div>
 
-      {/* Info Section (20-25%) - Distinct Elevation */}
-      <div className="flex-1 px-6 pb-6 flex flex-col justify-between relative z-20">
-        <div className="flex justify-between items-center space-x-reverse space-x-2">
-          <h2 className="text-xl font-black text-white leading-tight tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+      {/* Info Section (30%) - Distinct Elevation */}
+      <div className="flex-1 px-5 pb-5 pt-1 flex flex-col justify-between relative z-20 overflow-hidden bg-black/5">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-base font-black text-white leading-tight tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] line-clamp-1">
             {name}
           </h2>
-          <div className="flex items-center space-x-reverse space-x-2">
-            <span className="text-xl font-black text-[#10B981] drop-shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-black text-[#FFD700] drop-shadow-[0_0_15px_rgba(255,215,0,0.5)] animate-pulse-slow">
               {(parseFloat(price) * 1000).toLocaleString()}
             </span>
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">SDG</span>
+            <span className="text-[9px] font-black text-[#FFD700]/70 uppercase tracking-widest">SDG</span>
           </div>
         </div>
 
         {/* High-Elevation 3D Emerald Button */}
-        <div className="relative mt-2">
+        <div className="relative mt-auto pt-1">
           <motion.button
             whileHover={{ y: -5, scale: 1.02 }}
             whileTap={{ y: 2, scale: 0.98 }}
@@ -2031,6 +2182,14 @@ const AnimatedButton = ({ icon, label, onClick, level, isGlossy }: GridItemProps
 };
 
 const NotificationModal = ({ isOpen, onClose, notifications }: { isOpen: boolean, onClose: () => void, notifications: any[] }) => {
+  useEffect(() => {
+    if (isOpen) {
+      const handleBack = () => onClose();
+      window.addEventListener('zone-back-button', handleBack);
+      return () => window.removeEventListener('zone-back-button', handleBack);
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
@@ -2118,7 +2277,7 @@ const NotificationModal = ({ isOpen, onClose, notifications }: { isOpen: boolean
         </div>
         
         <div className="bg-[#064e3b]/5 p-6 text-center border-t border-[#064e3b]/10">
-          <p className="text-[#064e3b]/60 text-xs font-black uppercase tracking-widest">المؤسسة العامة للزراعة التجميلية - زون</p>
+          <p className="text-[#064e3b]/60 text-xs font-black uppercase tracking-widest">زون للخدمات الزراعيه</p>
         </div>
       </motion.div>
     </div>
@@ -2231,7 +2390,7 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
         <div className="absolute inset-2 rounded-full border-2 border-white/10" />
         
         <img 
-          src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" 
+          src="https://i.ibb.co/qFgDcx2b/logo.png" 
           alt="Zone Logo"
           className="w-48 h-48 sm:w-60 sm:h-60 object-contain drop-shadow-xl mix-blend-multiply"
           style={{ 
@@ -2330,18 +2489,73 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const startCamera = async () => {
+    console.log("Attempting to start camera, Platform:", Capacitor.getPlatform());
+    
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const permissions = await CapacitorCamera.checkPermissions();
+        console.log("Capacitor permissions status:", permissions);
+        
+        if (permissions.camera !== 'granted') {
+          const request = await CapacitorCamera.requestPermissions();
+          console.log("Requested Capacitor permissions result:", request);
+          if (request.camera !== 'granted') {
+            alert("يرجى إعطاء الإذن للكاميرا من إعدادات الهاتف لتتمكن من تشخيص النبات.");
+            setSource(null);
+            return;
+          }
+        }
+
+        const photo = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.DataUrl,
+          source: CapacitorCameraSource.Camera
+        });
+        if (photo.dataUrl) {
+          setImage(photo.dataUrl);
+          setSource(null);
+        }
+      } catch (err: any) {
+        console.error("Capacitor camera error:", err);
+        setSource(null);
+      }
+      return;
+    }
+
+    // Web Fallback
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('NOT_SUPPORTED');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.error("Video play failed:", e));
+        };
+      }
     } catch (err: any) {
       console.error("Camera access error:", err);
-      if (err.name === 'NotAllowedError') {
-        alert("يرجى إعطاء الإذن للكاميرا من إعدادات المتصفح.");
+      let errorMsg = "عذراً، حدث خطأ في تشغيل الكاميرا.";
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMsg = "تم رفض الوصول للكاميرا. \n\nلإصلاح ذلك:\n1. اضغط على أيقونة القفل (🔒) بجانب رابط الموقع في الأعلى.\n2. تأكد من تفعيل الكاميرا (Camera).\n3. أعد تحميل الصفحة.";
       } else if (err.name === 'NotFoundError') {
-        alert("لم يتم العثور على كاميرا في هذا الجهاز.");
-      } else {
-        alert("عذراً، حدث خطأ في تشغيل الكاميرا. تأكد من إغلاق أي تطبيق آخر يستخدمها.");
+        errorMsg = "لم يتم العثور على كاميرا في هذا الجهاز. يرجى استخدام هاتف ذكي أو توصيل كاميرا ويب.";
+      } else if (err === 'NOT_SUPPORTED') {
+        errorMsg = "المتصفح لا يدعم الوصول للكاميرا. يرجى استخدام Chrome أو Safari.";
       }
+      
+      alert(errorMsg);
+      setSource(null);
     }
   };
 
@@ -2371,6 +2585,37 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
         analyzeImage(dataUrl);
       }
     }
+  };
+
+  const pickImageFromGallery = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const permissions = await CapacitorCamera.checkPermissions();
+        if (permissions.photos !== 'granted') {
+          const request = await CapacitorCamera.requestPermissions({ permissions: ['photos'] });
+          if (request.photos !== 'granted') {
+            alert("يرجى إعطاء الإذن للألبوم من إعدادات الهاتف لتتمكن من اختيار صورة.");
+            return;
+          }
+        }
+
+        const photo = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.DataUrl,
+          source: CapacitorCameraSource.Photos
+        });
+        if (photo.dataUrl) {
+          setImage(photo.dataUrl);
+          setSource(null);
+          analyzeImage(photo.dataUrl);
+        }
+      } catch (err) {
+        console.error("Capacitor gallery error:", err);
+      }
+      return;
+    }
+    fileInputRef.current?.click();
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -2465,13 +2710,25 @@ const analyzeImage = async (base64Image: string) => {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {!source && !image && !loading && !result && (
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setSource('camera')} className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all">
-                <Camera size={48} className="text-green-600 mb-4" />
+              <button 
+                onClick={() => setSource('camera')} 
+                className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all group"
+              >
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                  <Camera size={40} className="text-green-600" />
+                </div>
                 <span className="font-black text-green-900">فتح الكاميرا</span>
+                <span className="text-[10px] text-green-700/60 font-bold mt-1">تصوير مباشر</span>
               </button>
-              <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all">
-                <Upload size={48} className="text-green-600 mb-4" />
+              <button 
+                onClick={pickImageFromGallery} 
+                className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all group"
+              >
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                  <Upload size={40} className="text-green-600" />
+                </div>
                 <span className="font-black text-green-900">رفع من الاستوديو</span>
+                <span className="text-[10px] text-green-700/60 font-bold mt-1">اختيار صورة محفوظة</span>
                 <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
               </button>
             </div>
@@ -2551,6 +2808,14 @@ const analyzeImage = async (base64Image: string) => {
 };
 
 const AboutModal = ({ isOpen, onClose, onShowPrivacy }: { isOpen: boolean, onClose: () => void, onShowPrivacy: () => void }) => {
+  useEffect(() => {
+    if (isOpen) {
+      const handleBack = () => onClose();
+      window.addEventListener('zone-back-button', handleBack);
+      return () => window.removeEventListener('zone-back-button', handleBack);
+    }
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -2574,7 +2839,7 @@ const AboutModal = ({ isOpen, onClose, onShowPrivacy }: { isOpen: boolean, onClo
 
             <div className="p-8 text-center relative z-10">
               <div className="w-24 h-24 bg-white rounded-3xl shadow-xl mx-auto flex items-center justify-center mb-6 border-2 border-red-50 p-4">
-                <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-full h-full object-contain" alt="about-logo" />
+                <img src="https://i.ibb.co/qFgDcx2b/logo.png" className="w-full h-full object-contain" alt="about-logo" />
               </div>
               
               <h2 className="text-2xl font-black text-red-800 mb-2">مشتل زون</h2>
@@ -2629,6 +2894,14 @@ const AboutModal = ({ isOpen, onClose, onShowPrivacy }: { isOpen: boolean, onClo
 };
 
 const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  useEffect(() => {
+    if (isOpen) {
+      const handleBack = () => onClose();
+      window.addEventListener('zone-back-button', handleBack);
+      return () => window.removeEventListener('zone-back-button', handleBack);
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
@@ -2681,6 +2954,8 @@ export default function App() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState<string | null>(null);
+  const [footerLine1, setFooterLine1] = useState<string | null>(null);
+  const [footerLine2, setFooterLine2] = useState<string | null>(null);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -2694,7 +2969,23 @@ export default function App() {
     };
 
     window.addEventListener('keydown', handleKeyDown, { passive: false });
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    // Handle Android Back Button
+    const setupBackButton = async () => {
+      if (Capacitor.isNativePlatform()) {
+        const { App: CapacitorApp } = await import('@capacitor/app');
+        CapacitorApp.addListener('backButton', () => {
+          // If any modal is open, close it. Otherwise, prompt to exit (standard behavior)
+          // We'll closing based on state in the actual component logic or just provide a hook
+          window.dispatchEvent(new CustomEvent('zone-back-button'));
+        });
+      }
+    };
+    setupBackButton();
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
@@ -2704,7 +2995,9 @@ export default function App() {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [filters, setFilters] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [networkError, setNetworkError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [cart, setCart] = useState<any[]>([]);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'info' | 'error' } | null>(null);
   const [isCartInflating, setIsCartInflating] = useState(false);
@@ -2716,6 +3009,127 @@ export default function App() {
   const [isLegalOpen, setIsLegalOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isGardenSectionOpen, setIsGardenSectionOpen] = useState(false);
+  const [gardenServiceType, setGardenServiceType] = useState<'creation' | 'care' | null>(null);
+  const [gardenNotes, setGardenNotes] = useState('');
+  const [gardenPhoto, setGardenPhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleGlobalBack = () => {
+      if (isGardenSectionOpen) setIsGardenSectionOpen(false);
+      else if (currentLevel > 1) setCurrentLevel(1);
+    };
+    window.addEventListener('zone-back-button', handleGlobalBack);
+    return () => window.removeEventListener('zone-back-button', handleGlobalBack);
+  }, [isGardenSectionOpen, currentLevel]);
+
+  const handleGardenCapture = async (source: 'camera' | 'album') => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const permissions = await CapacitorCamera.checkPermissions();
+        if (source === 'camera' && permissions.camera !== 'granted') {
+          const req = await CapacitorCamera.requestPermissions();
+          if (req.camera !== 'granted') return;
+        }
+        const image = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.DataUrl,
+          source: source === 'camera' ? CapacitorCameraSource.Camera : CapacitorCameraSource.Photos
+        });
+        if (image.dataUrl) setGardenPhoto(image.dataUrl);
+      } catch (e) { console.error(e); }
+    } else {
+      if (source === 'camera') {
+        document.getElementById('garden-camera-native')?.click();
+      } else {
+        document.getElementById('garden-gallery')?.click();
+      }
+    }
+  };
+
+  const handleGardenOrder = () => {
+    const serviceTitle = gardenServiceType === 'creation' ? 'طلب إنشاء وتصميم حديقة' : 'طلب رعاية وتنسيق حديقة';
+    const gardenServiceItem = {
+      id: `garden-${Date.now()}`,
+      name: serviceTitle,
+      price: "0.000",
+      image: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?q=80&w=300&auto=format&fit=crop",
+      isService: true
+    };
+    setCart([...cart, gardenServiceItem]);
+    setIsGardenSectionOpen(false);
+    setIsCartDrawerOpen(true);
+    setShowCartHint(true);
+  };
+
+  const GardenModal = () => (
+    <AnimatePresence>
+      {isGardenSectionOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+        >
+          <motion.div 
+            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+            className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative"
+          >
+            <div className="bg-gradient-to-r from-green-800 to-green-600 p-6 text-white text-center">
+              <Sprout className="mx-auto mb-2" size={40} />
+              <div className="absolute top-6 left-6">
+                <button onClick={() => setIsGardenSectionOpen(false)} className="text-white/80 hover:text-white transition-colors"><X size={24} /></button>
+              </div>
+              <h2 className="text-xl font-black">تصميم وتنسيق الحدائق</h2>
+              <p className="text-white/80 text-sm italic">نحول مساحتك إلى جنة خضراء</p>
+            </div>
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto no-scrollbar" dir="rtl">
+              {!gardenServiceType ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <button onClick={() => setGardenServiceType('creation')} className="flex flex-col items-center p-6 bg-green-50 rounded-2xl border-2 border-green-100 hover:border-green-500 transition-all group">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md mb-3 group-hover:scale-110 transition-transform"><Layout size={32} className="text-green-700" /></div>
+                    <span className="font-black text-green-900">إنشاء حدائق</span>
+                  </button>
+                  <button onClick={() => setGardenServiceType('care')} className="flex flex-col items-center p-6 bg-red-50 rounded-2xl border-2 border-red-100 hover:border-red-500 transition-all group">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md mb-3 group-hover:scale-110 transition-transform"><HeartPulse size={32} className="text-red-700" /></div>
+                    <span className="font-black text-red-900">رعاية حدائق</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border-r-4 border-green-500 p-4 rounded-2xl shadow-sm">
+                    <p className="text-green-900 text-sm font-black flex items-center gap-2 mb-1"><Camera size={18} className="text-green-600" />نرغب برؤية مساحتك الخضراء..</p>
+                    <p className="text-green-700/80 text-[11px] font-bold leading-relaxed">فضلاً منك، التقط صورة مباشرة لحديقتك أو اختر صورة من المعرض لنتمكن من تقديم أفضل نصيحة وتصميم لك.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => handleGardenCapture('camera')} className="bg-green-600 hover:bg-green-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 font-black text-white transition-all shadow-md active:scale-95"><Camera size={24} /><span className="text-[11px]">تصوير مباشر</span></button>
+                    <button onClick={() => handleGardenCapture('album')} className="bg-white hover:bg-gray-50 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 font-black text-gray-700 transition-all border-2 border-gray-100 shadow-sm active:scale-95"><ImageIcon size={24} className="text-blue-500" /><span className="text-[11px]">من الاستوديو</span></button>
+                    
+                    <input id="garden-gallery" type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setGardenPhoto(URL.createObjectURL(file)); }} />
+                    <input id="garden-camera-native" type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setGardenPhoto(URL.createObjectURL(file)); }} />
+                  </div>
+                  {gardenPhoto && (
+                    <div className="relative w-full h-32 rounded-xl overflow-hidden border-2 border-green-500 shadow-inner">
+                      <img src={gardenPhoto} className="w-full h-full object-cover" alt="Preview" />
+                      <button onClick={() => setGardenPhoto(null)} className="absolute top-2 right-2 bg-red-600/80 backdrop-blur-sm text-white p-1.5 rounded-full hover:bg-red-700 transition-colors shadow-lg"><X size={14}/></button>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-black text-gray-500 mb-1 mr-1">ملاحظاتك واحتياجاتك</label>
+                    <textarea className="w-full bg-gray-50 rounded-xl p-4 border-2 border-transparent focus:border-green-500 transition-all outline-none min-h-[100px] text-right" placeholder="اكتب هنا ما تحتاجه حديقتك..." value={gardenNotes} onChange={(e) => setGardenNotes(e.target.value)} />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => handleGardenOrder()} className="flex-1 bg-green-700 hover:bg-green-800 text-white font-black py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"><Send size={20} /> إرسال الطلب</button>
+                    <button onClick={() => setGardenServiceType(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-6 rounded-xl transition-all">رجوع</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -2728,25 +3142,40 @@ export default function App() {
     return i2Value && i2Value.toString().trim().startsWith('sk-or-v1-') ? i2Value.toString().trim() : null;
   }, [data]);
 
-  const notifications = useMemo(() => {
-    if (data.length === 0) return [];
-    // Assuming keys are in order of columns A, B, C...
-    const keys = Object.keys(data[0]);
-    if (keys.length < 8) return [];
-    
-    // Column H is Index 7. We take non-empty cells from Column H.
-    // Cell H2 corresponds to data[0][keys[7]]
-    return data
-      .filter(row => {
-        const msg = row[keys[7]];
-        return msg && msg.toString().trim() !== '';
-      })
-      .map(row => ({
-        text: row[keys[7]],
-        bg: row[keys[8]] || '#fef3c7', // Column I for background (fallback to cream)
-        color: row[keys[9]] || '#78350f' // Column J for font color (fallback to brown)
-      }));
-  }, [data]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [lastViewedCount, setLastViewedCount] = useState<number>(() => {
+    return parseInt(localStorage.getItem('zone_viewed_notifications') || '0');
+  });
+  
+  // Automatic Notification Pop-up (Once per session - Auto close after 5s)
+  useEffect(() => {
+    if (!showSplash && notifications.length > 0) {
+      const hasShown = sessionStorage.getItem('zone_notified_this_session');
+      if (!hasShown) {
+        // Wait a bit after splash for better UX
+        const timer = setTimeout(() => {
+          setIsNotificationOpen(true);
+          sessionStorage.setItem('zone_notified_this_session', 'true');
+          
+          // Auto close after 5 seconds
+          const closeTimer = setTimeout(() => {
+            setIsNotificationOpen(false);
+          }, 5000);
+          
+          return () => clearTimeout(closeTimer);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [showSplash, notifications.length]);
+
+  // Update lastViewedCount when opening notifications
+  useEffect(() => {
+    if (isNotificationOpen && notifications.length > lastViewedCount) {
+      setLastViewedCount(notifications.length);
+      localStorage.setItem('zone_viewed_notifications', notifications.length.toString());
+    }
+  }, [isNotificationOpen, notifications.length, lastViewedCount]);
 
   const normalize = (text: string) => {
     if (!text) return '';
@@ -2823,19 +3252,19 @@ export default function App() {
       setUserData(JSON.parse(savedUserData));
     }
 
-    const fetchData = async () => {
+    const fetchData = async (force: boolean = false) => {
       try {
         // 1. Load from Local Storage (IndexedDB) first for instant UI
         const cachedProducts = await getProducts();
         if (cachedProducts.length > 0) {
           setData(cachedProducts);
-          setLoading(false);
-          console.log("Loaded data from local storage (IndexedDB)");
+          setLoading(false); // Show UI immediately if we have data
+          console.log("Loaded data from local storage (IndexedDB) - Showing UI while syncing.");
         }
 
         // 2. Check if we've already performed a sync check in this session
         const sessionSynced = sessionStorage.getItem('zone_sheets_synced');
-        if (sessionSynced === 'true' && cachedProducts.length > 0) {
+        if (!force && sessionSynced === 'true' && cachedProducts.length > 0) {
           console.log("Already synced with Sheets in this session. Skipping network check.");
           setLoading(false);
           return;
@@ -2845,44 +3274,84 @@ export default function App() {
         try {
           const lastVersion = await getMetadata('data_version');
           
-          // المهلة الزمنية (Timeout) لمنع التعليق
+          setSyncStatus("جاري البحث عن تحديثات...");
+          
+          // Use 'check' action to see if a full download is needed
+          // زيادة المهلة إلى 45 ثانية لضمان الاستجابة في حال ضعف الإنترنت
           const response = await fetch(`${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}`, {
             method: 'GET',
-            headers: { 'Accept': 'application/json' },
             mode: 'cors',
             redirect: 'follow',
-            signal: AbortSignal.timeout(20000)
+            signal: AbortSignal.timeout(45000) 
           });
           
-          if (!response.ok) throw new Error('ERR_SERVER_RESPONSE');
+          if (!response.ok) throw new Error(`ERR_SERVER_RESPONSE: ${response.status}`);
           const checkResult = await response.json();
 
           sessionStorage.setItem('zone_sheets_synced', 'true');
 
+          // If server says no change, and we have cache, stop here
           if (checkResult && checkResult.changed === false && cachedProducts.length > 0) {
-            console.log("GAS: Data is up-to-date.");
+            console.log("GAS: Data is up-to-date (Version matches).");
+            setSyncStatus(null);
             setLoading(false);
             return;
           }
 
-          // جلب البيانات الكاملة في حال وجود تحديث
+          // Fetch full data if changed or no cache
+          setSyncStatus("جاري تحديث قائمة المنتجات من السحابة...");
           const fullResponse = await fetch(SYSTEM_GAS_URL, {
             method: 'GET',
-            headers: { 'Accept': 'application/json' },
             mode: 'cors',
             redirect: 'follow',
-            signal: AbortSignal.timeout(45000)
+            signal: AbortSignal.timeout(120000) // 120 seconds for full download
           });
           
-          if (!fullResponse.ok) throw new Error('ERR_DATA_FETCH');
+          if (!fullResponse.ok) throw new Error(`ERR_DATA_FETCH: ${fullResponse.status}`);
           const jsonData = await fullResponse.json();
 
-          // الاستخراج التلقائي لموقع الويب من الخلية J2 (Row 2, Col 10)
-          // Index 1 (Row 2), Index 9 (Col J)
-          if (Array.isArray(jsonData) && jsonData[1] && jsonData[1][9]) {
-            const potentialUrl = jsonData[1][9].toString().trim();
-            if (potentialUrl.startsWith('http')) {
-              setWebsiteUrl(potentialUrl);
+          // الاستخراج المخصص من العمود H (Index 7)
+          //jsonData[row][col]
+          if (Array.isArray(jsonData)) {
+            // الخلية 1 (Row 1): الموقع الإلكتروني
+            if (jsonData[0] && jsonData[0][7]) {
+              const url = jsonData[0][7].toString().trim();
+              if (url.startsWith('http')) setWebsiteUrl(url);
+            }
+            // الخلية 2 (Row 2): نص التذييل 1
+            if (jsonData[1] && jsonData[1][7]) {
+              setFooterLine1(jsonData[1][7].toString().trim());
+            }
+            // الخلية 3 (Row 3): نص التذييل 2
+            if (jsonData[2] && jsonData[2][7]) {
+              setFooterLine2(jsonData[2][7].toString().trim());
+            }
+
+            // الخلايا من 5 إلى 10 (Rows 5-10): التنبيهات
+            // Indices 4 to 9
+            const extractedNotifications = jsonData
+              .slice(4, 10)
+              .filter(row => row[7] && row[7].toString().trim() !== '')
+              .map((row, idx) => ({
+                id: `notify-${idx}-${Date.now()}`,
+                text: row[7].toString().trim(),
+                bg: row[8] || '#fef3c7',
+                color: '#78350f'
+              }));
+            setNotifications(extractedNotifications);
+
+            // ميزة التنبيه الفوري من الخلية H7 (Row 7, Column H)
+            // ملاحظة: الخلية H7 هي Row Index 6
+            if (jsonData[6] && jsonData[6][7]) {
+              const h7Alert = jsonData[6][7].toString().trim();
+              if (h7Alert && h7Alert !== "" && h7Alert !== "تنبيه") {
+                setNotification({
+                  message: h7Alert,
+                  type: 'info'
+                });
+                // إغلاق التنبيه تلقائياً بعد 10 ثوانٍ
+                setTimeout(() => setNotification(null), 10000);
+              }
             }
           }
 
@@ -2954,6 +3423,7 @@ export default function App() {
           await saveProducts(finalData);
           await saveMetadata('data_version', currentHash);
           
+          setSyncStatus(null); // Clear sync status on success
           setLoading(false);
           console.log("GAS: Database synced and parsed successfully.");
 
@@ -2977,16 +3447,35 @@ export default function App() {
             }
           });
         } catch (fetchError: any) {
-          console.error("Networking logic failed:", fetchError);
-          let userMessage = "خطأ في الاتصال بالخادم، جارٍ العمل بالبيانات المحفوظة";
-          if (fetchError.name === 'AbortError' || fetchError.message?.includes('aborted')) {
-            userMessage = "اتصال الإنترنت ضعيف جداً (انتهت المهلة)، سنحاول لاحقاً";
+          console.error("Zone Sync Error:", fetchError);
+          
+          let userMessage = "حدث خطأ غير متوقع في مزامنة البيانات";
+          const isTimeout = fetchError.name === 'AbortError' || 
+                            fetchError.message?.toLowerCase().includes('timeout') || 
+                            fetchError.message?.toLowerCase().includes('aborted');
+          
+          if (isTimeout) {
+            userMessage = "انتهت مهلة الاتصال بالإنترنت (الشبكة ضعيفة). جاري العمل بالبيانات المحفوظة حالياً.";
+          } else if (fetchError.message?.includes('Failed to fetch')) {
+            userMessage = "لا يوجد اتصال بالإنترنت. جاري عرض البيانات المحفوظة على جهازك.";
           }
+
+          // إذا كان لدينا بيانات مخزنة، لا نعرض شاشة الخطأ الكاملة، بل نعرض إشعاراً فقط
+          if (cachedProducts.length > 0) {
+            setNotification({ message: userMessage, type: 'info' });
+            setNetworkError(null); // مسح الخطأ لتجنب شاشة التعطل
+          } else {
+            setNetworkError(userMessage);
+            setNotification({ message: userMessage, type: 'error' });
+          }
+          
           setLoading(false);
+          setSyncStatus(null);
         }
       } catch (error) {
         console.error("Error in data synchronization:", error);
         setLoading(false);
+        setSyncStatus(null);
       }
     };
     fetchData();
@@ -3083,6 +3572,8 @@ export default function App() {
     if (currentLevel === 1) {
       const unique = Array.from(new Set(data.map(row => row[colC]).filter(val => val && val !== 'عام')));
       items = unique.map(val => ({ type: 'level1', label: val, id: val }));
+      // Add static Garden Design section
+      items.unshift({ type: 'static', label: 'تصميم الحدائق', id: 'garden-design' });
     } else if (currentLevel === 2) {
       const filtered = data.filter(row => row[colC] === filters[0]);
       // Get unique non-empty sub-categories
@@ -3158,9 +3649,94 @@ export default function App() {
     setSearchQuery(''); // Reset search on navigation
   };
 
+  // Handle Android/Native Back Button Navigation
+  useEffect(() => {
+    const backButtonHandler = async () => {
+      if (zoomedImage) {
+        setZoomedImage(null);
+        return;
+      }
+      if (isPaymentOpen) {
+        setIsPaymentOpen(false);
+        return;
+      }
+      if (isInvoiceOpen) {
+        setIsInvoiceOpen(false);
+        return;
+      }
+      if (isCartDrawerOpen) {
+        setIsCartDrawerOpen(false);
+        return;
+      }
+      if (isGardenSectionOpen) {
+        // If in service sub-view, go back to service selection, else close modal
+        if (gardenServiceType) {
+          setGardenServiceType(null);
+        } else {
+          setIsGardenSectionOpen(false);
+        }
+        return;
+      }
+      if (isDiagnosisOpen) {
+        setIsDiagnosisOpen(false);
+        return;
+      }
+      if (isLegalOpen) {
+        setIsLegalOpen(false);
+        return;
+      }
+      if (isAboutOpen) {
+        setIsAboutOpen(false);
+        return;
+      }
+      if (isNotificationOpen) {
+        setIsNotificationOpen(false);
+        return;
+      }
+      if (showTerms) {
+        setShowTerms(false);
+        return;
+      }
+      if (showRegistration) {
+        setShowRegistration(false);
+        return;
+      }
+      if (currentLevel > 1) {
+        goBack();
+        return;
+      }
+      
+      // If we reach here, we are at the root level with no modals open
+      // We can either prompt "Confirm Exit" or let Capacitor close the app
+      // By NOT preventing default here, Capacitor will handle exit automatically if it's the only listener
+      // However, usually we want to confirm.
+      if (window.confirm("هل تريد الخروج من التطبيق؟")) {
+        CapApp.exitApp();
+      }
+    };
+
+    const registration = CapApp.addListener('backButton', ({ canGoBack }) => {
+      // If any modal or nested level is active, handle it and prevent exit
+      const hasOverlay = !!(zoomedImage || isPaymentOpen || isInvoiceOpen || isCartDrawerOpen || isGardenSectionOpen || isDiagnosisOpen || isLegalOpen || isAboutOpen || isNotificationOpen || showTerms || showRegistration || currentLevel > 1);
+      
+      if (hasOverlay) {
+        backButtonHandler();
+      } else {
+        // For the root level, we can either let it exit directly or show our confirmation
+        backButtonHandler();
+      }
+    });
+
+    return () => {
+      registration.then(r => r.remove());
+    };
+  }, [zoomedImage, isPaymentOpen, isInvoiceOpen, isCartDrawerOpen, isGardenSectionOpen, gardenServiceType, isDiagnosisOpen, isLegalOpen, isAboutOpen, isNotificationOpen, showTerms, showRegistration, currentLevel]);
+
   const getIcon = (label: string, index: number) => {
     const labelLower = label.toLowerCase();
     const normalizedLabel = normalize(label);
+    
+    if (normalizedLabel.includes('تصميم') || normalizedLabel.includes('تنسيق') || normalizedLabel.includes('حدائق')) return <Sprout size="8vw" />;
     
     // Smart Mapping based on label keywords
     if (normalizedLabel.includes('شتول') || normalizedLabel.includes('شتله')) return <Sprout size="8vw" />;
@@ -3617,6 +4193,8 @@ export default function App() {
         onClose={() => setIsPaymentOpen(false)}
         userData={userData}
         cart={cart}
+        gardenPhoto={gardenPhoto}
+        gardenNotes={gardenNotes}
         onSuccess={() => {
           setIsPaymentOpen(false);
           setShowSuccess(true);
@@ -3650,79 +4228,66 @@ export default function App() {
         onShowPrivacy={() => setIsLegalOpen(true)}
       />
 
+      <GardenModal />
+
       {!showSplash && !showRegistration && (
         <motion.div 
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           transition={{ duration: 0.5 }}
-          className="flex flex-col min-h-[100dvh] relative perspective-1000"
+          className="flex flex-col h-[100dvh] relative overflow-hidden"
         >
-          {/* 3D Watermark Background - Starts below diagnosis button */}
-          <div className="fixed inset-0 top-[380px] pointer-events-none flex items-center justify-center overflow-hidden z-0 perspective-1000">
-            <motion.div
-              animate={{ 
-                rotateY: [0, 5, 0, -5, 0],
-                rotateX: [15, 18, 15, 12, 15],
-                y: [0, -10, 0]
-              }}
-              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-              className="relative w-4/5 h-4/5 flex items-center justify-center"
-              style={{
-                transformStyle: 'preserve-3d',
-              }}
-            >
-              <motion.img 
-                src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" 
-                alt="Watermark" 
-                className="w-full h-full object-contain opacity-40 scale-110"
-                style={{
-                  filter: 'drop-shadow(20px 20px 40px rgba(0,0,0,0.4)) drop-shadow(-10px -10px 20px rgba(255,255,255,0.05)) saturate(1.5)',
-                  transform: 'translateZ(50px)'
-                }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                referrerPolicy="no-referrer"
-              />
-              {/* Shine Overlay */}
-              <div className="absolute inset-0 overflow-hidden opacity-30 mix-blend-overlay">
-                <motion.div 
-                  animate={{ x: ['-100%', '200%'] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-25deg]"
-                />
-              </div>
-            </motion.div>
-          </div>
-
-
-          {/* Header */}
-          <header className="bg-[#B71C1C] pt-[env(safe-area-inset-top)] min-h-[4rem] flex flex-col shadow-2xl sticky top-0 z-[100] w-full">
+          {/* Header - Fixed/Frozen in place */}
+          <header className="bg-[#B71C1C] pt-[env(safe-area-inset-top)] min-h-[4rem] flex-none flex flex-col shadow-2xl z-[100] w-full border-b border-white/20">
             <div className="h-16 flex items-center justify-between px-4 w-full">
               <div className="flex items-center space-x-reverse space-x-3">
               {currentLevel > 1 && (
                 <motion.button 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={goBack} 
-                  className="text-white p-2 hover:bg-red-800 rounded-full transition-colors shadow-inner"
+                  className="text-white p-2 hover:bg-red-800 rounded-2xl flex items-center gap-1.5 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.3)] bg-red-900/60 px-4 border border-white/20 active:translate-y-0.5"
                 >
-                  <ChevronLeft size={28} />
+                  <ChevronRight size={24} />
+                  <span className="font-black text-base ml-1 tracking-tighter">رجوع</span>
                 </motion.button>
               )}
               <button 
-                onClick={() => {
-                  if (window.confirm("هل تريد إغلاق التطبيق؟")) {
-                    window.close();
-                    // Fallback for browsers that don't allow window.close()
-                    window.location.href = "about:blank";
+                onClick={async () => {
+                  if (Capacitor.isNativePlatform()) {
+                    await CapApp.exitApp();
+                  } else {
+                    if (window.confirm("هل تريد إغلاق التطبيق؟")) {
+                      window.close();
+                      window.location.href = "about:blank";
+                      alert("نظام الأمان في المتصفح قد يمنع إغلاق هذه الصفحة تلقائياً. يرجى إغلاق علامة التبويب يدوياً.");
+                    }
                   }
                 }}
                 className="text-white p-2 hover:bg-red-800 rounded-full transition-colors"
+                title="إغلاق التطبيق"
               >
                 <Power size={26} />
               </button>
+
+              <button 
+                onClick={() => {
+                  setLoading(true);
+                  // We need to access fetchData here. Since it's inside useEffect, 
+                  // I might need to lift it out or use a state-triggered sync.
+                  // For now, I'll use location.reload as a safe fallback that triggers useEffect.
+                  sessionStorage.removeItem('zone_sheets_synced');
+                  window.location.reload();
+                }}
+                className={`text-white p-2 hover:bg-red-800 rounded-full transition-all ${loading ? 'animate-spin opacity-50' : ''}`}
+                title="تحديث البيانات"
+                disabled={loading}
+              >
+                <RefreshCw size={24} />
+              </button>
             </div>
-            
+
             <div className="flex flex-col items-center max-w-[45%]">
               <span className="wood-carved text-xs sm:text-lg md:text-3xl drop-shadow-2xl px-1 truncate w-full text-center">زون للخدمات الزراعية</span>
             </div>
@@ -3783,7 +4348,6 @@ export default function App() {
                   </motion.div>
                 )}
 
-                {/* Drum Lock Visual Overlay */}
                 <AnimatePresence>
                   {isLocked && (
                     <motion.div 
@@ -3804,30 +4368,69 @@ export default function App() {
               </motion.div>
 
               <button 
+                onClick={() => {
+                  setIsNotificationOpen(true);
+                  setLastViewedCount(notifications.length);
+                  localStorage.setItem('zone_viewed_notifications', notifications.length.toString());
+                }}
+                className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
+              >
+                <Bell size={26} />
+                {notifications.length > lastViewedCount && (
+                  <motion.div 
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ 
+                      scale: [1, 1.2, 1],
+                      opacity: 1 
+                    }}
+                    transition={{
+                      scale: { repeat: Infinity, duration: 2, ease: "easeInOut" },
+                      opacity: { duration: 0.2 }
+                    }}
+                    className="absolute -top-0.5 -right-0.5 bg-red-600 text-white text-[10px] font-black min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full border-2 border-[#B71C1C] shadow-lg shadow-black/20 z-10"
+                  >
+                    {notifications.length - lastViewedCount}
+                  </motion.div>
+                )}
+              </button>
+
+              <button 
                 onClick={() => setIsAboutOpen(true)}
                 className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
               >
                 <Info size={26} />
               </button>
-
-              <button 
-                onClick={() => setIsNotificationOpen(true)}
-                className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
-              >
-                <Bell size={26} />
-                {notifications.length > 0 && (
-                  <motion.span 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#042f22] shadow-lg z-10"
-                  >
-                    {notifications.length}
-                  </motion.span>
-                )}
-              </button>
             </div>
           </div>
         </header>
+
+          <AnimatePresence>
+            {syncStatus && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="bg-yellow-500 py-1.5 px-4 flex items-center justify-center gap-2 overflow-hidden z-[90] shadow-md border-b border-yellow-600"
+              >
+                <RefreshCw size={14} className="text-[#4A3700] animate-spin" />
+                <span className="text-[11px] font-black text-[#4A3700] tracking-tight">{syncStatus}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Scrollable Main Content */}
+          <div id="main-content" className="flex-1 overflow-y-auto relative no-scrollbar pb-8">
+            {/* Watermark Background Container */}
+            <div className="fixed inset-0 top-[380px] pointer-events-none flex items-center justify-center overflow-hidden z-0">
+               <motion.img 
+                  src="https://i.ibb.co/qFgDcx2b/logo.png" 
+                  alt="Watermark" 
+                  className="w-4/5 h-4/5 object-contain opacity-20"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+                  referrerPolicy="no-referrer"
+                />
+            </div>
           
           {/* Sticky Massive Invoice Button - Frozen at top below header */}
           {cart.length > 0 && (
@@ -3864,73 +4467,52 @@ export default function App() {
               <span className="text-gray-900 text-sm font-black tracking-tight">{userData?.name || 'زائر'}</span>
             </div>
 
-            {/* 3D Smart Search Bar */}
-            <div className="relative group perspective-1000">
-              <motion.div
-                animate={{
-                  boxShadow: isSearchFocused 
-                    ? "0 8px 0 #991B1B, 0 0 40px rgba(183, 28, 28, 0.8), 0 15px 30px rgba(0,0,0,0.3)" 
-                    : "0 8px 0 #991B1B, 0 15px 20px rgba(0,0,0,0.2)",
-                  rotateX: isSearchFocused ? 2 : 0,
-                  y: isSearchFocused ? -2 : 0
-                }}
-                className={`relative w-full h-20 bg-red-600 rounded-2xl border-2 transition-all duration-500 overflow-hidden ${
-                  isSearchFocused ? 'border-red-400' : 'border-red-700/60'
-                } shadow-[0_8px_0_#991B1B,0_15px_20px_rgba(0,0,0,0.2)] active:shadow-[0_2px_0_#991B1B,0_5px_10px_rgba(0,0,0,0.2)] active:translate-y-[6px] preserve-3d`}
-              >
-                {/* Pure White Laser / Pulse Effect */}
-                <div className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${isSearchFocused ? 'opacity-100' : 'opacity-40'}`}>
-                  <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-laser-scan`} />
-                </div>
-
-                <input 
-                  type="text" 
-                  placeholder="ابحث عن شتول، أصائص، أسمدة، مبيدات... إلخ)" 
-                  value={searchQuery}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-full bg-transparent px-14 text-xl font-black text-black focus:outline-none placeholder:text-black/50 placeholder:font-black placeholder:drop-shadow-[0_1px_2px_rgba(255,255,255,0.3)] relative z-10"
-                  dir="rtl"
-                />
-
-                {/* 3D Magnifying Glass Icon */}
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                  <motion.div 
-                    animate={isSearchFocused ? { scale: 1.1, rotate: 5 } : { scale: 1, rotate: 0 }}
-                    className="relative"
-                  >
-                    <Search size={36} className="text-black drop-shadow-[0_2px_4px_rgba(255,255,255,0.4)]" />
-                  </motion.div>
-                </div>
-
-                {/* Pulsating Ready Indicator */}
-                {isSearchFocused && (
-                  <motion.div 
-                    animate={{ 
-                      opacity: [0.4, 1, 0.4],
-                      scale: [0.8, 1.2, 0.8],
-                      boxShadow: ["0 0 5px #22c55e", "0 0 20px #22c55e", "0 0 5px #22c55e"]
-                    }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 bg-green-500 rounded-full z-20"
+            {/* Combined Search and Diagnosis Row - Each taking half width to save space */}
+            <div className="flex gap-4 mb-4">
+              {/* 3D Smart Search Bar - Half Width */}
+              <div className="flex-1 relative group perspective-1000">
+                <motion.div
+                  animate={{
+                    boxShadow: isSearchFocused 
+                      ? "0 4px 15px rgba(46, 125, 50, 0.4)" 
+                      : "0 6px 0 #1B5E20, 0 10px 15px rgba(0,0,0,0.15)",
+                    y: isSearchFocused ? 2 : 0
+                  }}
+                  className={`relative w-full h-16 bg-[#2E7D32] rounded-2xl border-2 transition-all duration-300 overflow-hidden ${
+                    isSearchFocused ? 'border-green-400' : 'border-[#1B5E20]/60'
+                  } shadow-[0_6px_0_#1B5E20,0_10px_15px_rgba(0,0,0,0.15)] active:translate-y-[4px] active:shadow-[0_2px_0_#1B5E20,0_4px_8px_rgba(0,0,0,0.1)]`}
+                >
+                  <input 
+                    type="text" 
+                    placeholder="بحث ذكي..." 
+                    value={searchQuery}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-full bg-transparent px-10 text-sm font-black text-white focus:outline-none placeholder:text-white/40 relative z-10"
+                    dir="rtl"
                   />
-                )}
-              </motion.div>
-            </div>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                    <Search size={20} className="text-white opacity-80" />
+                  </div>
+                </motion.div>
+              </div>
 
-            {/* General Diagnosis Button */}
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setIsDiagnosisOpen(true)}
-              className="w-full h-20 bg-[#2E7D32] text-white rounded-2xl font-black text-lg shadow-[0_8px_0_#1B5E20,0_15px_20px_rgba(0,0,0,0.2)] flex items-center justify-between px-6 border-b-2 border-white/10 relative overflow-hidden group active:shadow-[0_2px_0_#1B5E20,0_5px_10px_rgba(0,0,0,0.2)] active:translate-y-[6px] transition-all"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-25deg] group-hover:animate-shine pointer-events-none" />
-              <Leaf size={28} className="text-white drop-shadow-md" />
-              <span className="flex-1 text-center px-4">تشخيص عام لأمراض نباتات الزينة</span>
-              <Camera size={28} className="text-white drop-shadow-md" />
-            </motion.button>
+              {/* General Diagnosis Button - Half Width */}
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setIsDiagnosisOpen(true)}
+                className="flex-1 h-16 bg-[#2E7D32] text-white rounded-2xl font-black text-xs shadow-[0_6px_0_#1B5E20,0_10px_15px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center border-b-2 border-white/10 relative overflow-hidden group active:translate-y-[4px] active:shadow-[0_2px_0_#1B5E20,0_4px_8px_rgba(0,0,0,0.1)] transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <Leaf size={18} className="text-white" />
+                  <span>طبيب زون</span>
+                  <Camera size={18} className="text-white" />
+                </div>
+                <span className="text-[8px] mt-1 text-white/70">تشخيص أولي لأمراض النباتات</span>
+              </motion.button>
+            </div>
 
             {currentLevel > 1 && (
               <motion.div 
@@ -3968,39 +4550,7 @@ export default function App() {
 
           {/* Main Grid with Slide Animation */}
           <main className={`flex-1 px-4 pb-8 relative z-10 overflow-hidden ${currentLevel === 1 ? 'bg-[#F6F6F8]' : 'bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800'}`}>
-            {/* 3D Glossy Watermark - Positioned behind content but above background */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1.6 }}
-                className="relative w-full h-full flex items-center justify-center"
-              >
-                {/* 3D Layers - Increased Clarity */}
-                <img 
-                  src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" 
-                  alt="Zone Watermark Shadow" 
-                  className="w-4/5 object-contain absolute blur-[5px] translate-y-8 opacity-60 grayscale"
-                  referrerPolicy="no-referrer"
-                />
-                <motion.img 
-                  src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" 
-                  alt="Zone Watermark Front" 
-                  className="w-4/5 object-contain relative z-10 drop-shadow-[0_40px_80px_rgba(0,0,0,0.6)]"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-                  referrerPolicy="no-referrer"
-                />
-                
-                {/* Moving Shine Effect - More Intense */}
-                <div className="absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
-                  <motion.div 
-                    animate={{ x: ['-200%', '200%'] }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.5 }}
-                    className="w-[300%] h-full bg-gradient-to-r from-transparent via-white/80 to-transparent skew-x-[-35deg] blur-2xl"
-                  />
-                </div>
-              </motion.div>
-            </div>
+            {/* Background pattern removed per user request */}
 
             {loading ? (
               <div className="flex flex-col items-center justify-center h-[50vh] relative z-20">
@@ -4013,7 +4563,7 @@ export default function App() {
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-[2.5rem] border-2 border-white/20 p-4 shadow-2xl relative overflow-hidden flex items-center justify-center"
                 >
-                  <img src="https://i.ibb.co/3y2V0NVM/Gemini-Generated-Image-m1yvplm1yvplm1yv.png" className="w-full h-full object-contain" alt="loading" />
+                  <img src="https://i.ibb.co/qFgDcx2b/logo.png" className="w-full h-full object-contain" alt="loading" />
                   <motion.div 
                     animate={{ rotate: 360 }}
                     transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -4028,7 +4578,37 @@ export default function App() {
                 >
                   <span className="text-red-800 font-black text-xl tracking-[0.2em] drop-shadow-sm">جاري التحديث الذكي...</span>
                   <p className="text-gray-500 font-bold text-xs mt-2 italic">نحن نقوم بجلب أفضل الشتلات والمنتجات لك</p>
+                  <motion.p 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 10 }}
+                    className="text-red-600/60 font-bold text-[10px] mt-4"
+                  >
+                    يبدو أن الاتصال بطيء، جاري المحاولة مرة أخرى...
+                  </motion.p>
                 </motion.div>
+              </div>
+            ) : networkError && data.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[50vh] relative z-20 px-6 text-center">
+                <div className="w-24 h-24 bg-red-100 rounded-3xl flex items-center justify-center mb-6">
+                  <AlertTriangle size={48} className="text-red-600" />
+                </div>
+                <h2 className="text-2xl font-black text-red-800 mb-2">عذراً، فشل تحديث البيانات</h2>
+                <p className="text-gray-600 font-bold mb-8 max-w-sm">{networkError}</p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setNetworkError(null);
+                    setLoading(true);
+                    window.location.reload(); 
+                  }}
+                  className="px-10 py-4 bg-red-700 text-white rounded-2xl font-black shadow-xl flex items-center gap-3"
+                >
+                  <RefreshCw size={24} className={loading ? "animate-spin" : ""} />
+                  <span>{loading ? "جاري التحديث..." : "إعادة المحاولة الآن"}</span>
+                </motion.button>
+                <p className="mt-6 text-[10px] text-gray-400 font-bold">تأكد من اتصالك بالإنترنت وحاول مرة أخرى</p>
               </div>
             ) : (
               <AnimatePresence mode="wait">
@@ -4041,12 +4621,18 @@ export default function App() {
                   className={`w-full max-w-full mx-auto pt-6 relative z-10 ${currentLevel === 1 ? 'grid grid-cols-3 gap-[4vw] px-[4vw]' : 'grid grid-cols-2 gap-x-[6vw] gap-y-12 px-[2vw]'}`}
                 >
                   {currentItems.map((item: any, index) => (
-                    item.type === 'level1' || item.type === 'level2' ? (
+                    item.type === 'level1' || item.type === 'level2' || item.type === 'static' ? (
                       <div key={item.id} className={currentLevel === 1 ? '' : 'col-span-1'}>
                         <AnimatedButton 
                           icon={getIcon(item.label, index)} 
                           label={item.label} 
-                          onClick={() => handleItemClick(item.label)}
+                          onClick={() => {
+                            if (item.type === 'static' && item.id === 'garden-design') {
+                              setIsGardenSectionOpen(true);
+                            } else {
+                              handleItemClick(item.label);
+                            }
+                          }}
                           level={currentLevel}
                           isGlossy={currentLevel === 1 && item.label === 'نباتات الزينة'}
                         />
@@ -4058,6 +4644,7 @@ export default function App() {
                           price={item.price}
                           image={item.image}
                           onAddToCart={() => addToCart(item)}
+                          onImageClick={(img) => setZoomedImage(img)}
                         />
                       </div>
                     )
@@ -4067,44 +4654,98 @@ export default function App() {
             )}
           </main>
 
-          {/* Website Link Section */}
-          {websiteUrl && (
-            <div className="w-full px-6 py-10 flex flex-col items-center">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  try {
-                    window.open(websiteUrl, '_blank');
-                  } catch (e) {
-                    console.error("Failed to open URL:", e);
-                  }
-                }}
-                className="w-full max-w-md p-6 bg-white border-2 border-red-100 rounded-[2.5rem] shadow-xl flex flex-col items-center gap-2 group transition-all"
-              >
-                <div className="flex items-center gap-3 w-full">
-                   <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0">
-                     <Globe size={24} className="text-red-700" />
-                   </div>
-                   <div className="text-right flex-1">
-                     <p className="text-sm font-black text-red-800">تفضلوا بزيارة موقعنا الإلكتروني</p>
-                     <p className="text-[10px] text-gray-400 font-bold tracking-wider">
-                       {(() => {
-                         try { return new URL(websiteUrl).hostname.replace('www.', ''); }
-                         catch { return websiteUrl; }
-                       })()}
-                     </p>
-                   </div>
-                   <ExternalLink size={16} className="text-gray-300 ml-2 shadow-sm" />
-                </div>
-              </motion.button>
+          {/* قسم رابط الموقع الإلكتروني والجهة المطورة - يظهر فقط عند وجود بيانات */}
+          {((websiteUrl && websiteUrl.startsWith('http')) || footerLine1 || footerLine2) && (
+            <div className="w-full px-6 py-12 flex flex-col items-center space-y-6 bg-gradient-to-t from-green-50/50 to-transparent">
+              
+              {websiteUrl && websiteUrl.startsWith('http') && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => window.open(websiteUrl, '_blank')}
+                  className="w-full max-w-md h-24 p-6 bg-white border-2 border-green-50 rounded-[2.5rem] shadow-xl flex items-center gap-4 group transition-all"
+                >
+                  <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-inner">
+                    <Globe size={28} className="text-green-700" />
+                  </div>
+                  <div className="text-right flex-1">
+                    <p className="text-sm font-black text-green-800">تفضلوا بزيارة موقعنا الرسمي</p>
+                    <p className="text-[11px] text-gray-400 font-bold tracking-wider">
+                      {(() => {
+                        try { return new URL(websiteUrl).hostname.replace('www.', ''); }
+                        catch { return websiteUrl; }
+                      })()}
+                    </p>
+                  </div>
+                  <ExternalLink size={18} className="text-gray-300 ml-2" />
+                </motion.button>
+              )}
+
+              {/* قسم المطور والمعلومات الإضافية من جدول البيانات */}
+              <div className="text-center space-y-2 px-4">
+                {footerLine1 && (
+                  <p className="text-gray-600 text-[13px] font-black leading-relaxed">
+                    {footerLine1}
+                  </p>
+                )}
+                {footerLine2 && (
+                  <p className="text-gray-400 text-[11px] font-bold italic leading-relaxed">
+                    {footerLine2}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Footer removed per user request */}
-          <div className="h-20 bg-transparent" />
+          <div className="h-4 bg-transparent" />
+          </div>
         </motion.div>
       )}
+
+      {/* Image Zoom Modal with Rotation Effect */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setZoomedImage(null)}
+            className="fixed inset-0 z-[500] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6"
+          >
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute top-10 right-10 text-white p-3 bg-red-600 rounded-full shadow-2xl z-[510]"
+              onClick={() => setZoomedImage(null)}
+            >
+              <X size={32} />
+            </motion.button>
+            <motion.div
+              layoutId={zoomedImage}
+              initial={{ scale: 0.5, rotate: -20, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              exit={{ scale: 0.5, rotate: 20, opacity: 0 }}
+              className="relative max-w-full max-h-full flex flex-col items-center"
+            >
+              <motion.img
+                src={zoomedImage}
+                alt="Zoomed"
+                className="max-w-full max-h-[75vh] object-contain rounded-[3rem] shadow-[0_0_100px_rgba(255,255,255,0.2)] border-8 border-white/10"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+              />
+              <div className="mt-8 text-center bg-white/10 px-8 py-4 rounded-3xl backdrop-blur-md border border-white/20">
+                <p className="text-white font-black text-xl tracking-tighter">مشتل زون - جودة الطبيعة في منزلك</p>
+                <div className="flex gap-2 justify-center mt-2">
+                  <div className="w-1 h-1 rounded-full bg-red-500 animate-ping" />
+                  <div className="w-1 h-1 rounded-full bg-green-500 animate-ping delay-75" />
+                  <div className="w-1 h-1 rounded-full bg-blue-500 animate-ping delay-150" />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

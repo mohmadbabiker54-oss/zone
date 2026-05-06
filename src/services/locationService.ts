@@ -1,4 +1,5 @@
-import { Geolocation, Position, PermissionStatus } from '@capacitor/geolocation';
+import { Geolocation, Position } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 
 /**
  * Interface for the location result containing coordinates or an error message.
@@ -20,77 +21,88 @@ export interface LocationResult {
 export const LocationService = {
   /**
    * Main function to get the current position.
-   * Handles permissions, high accuracy, and errors.
+   * Handles permissions, high accuracy fallbacks, and multi-layered retrieval.
    */
   async getCurrentLocation(): Promise<LocationResult> {
-    try {
-      // 1. Permissions Check
-      let checkPerms: any = {};
+    const isNative = Capacitor.isNativePlatform();
+    
+    // 1. Handle Permissions (Native only usually)
+    if (isNative) {
       try {
-        checkPerms = await Geolocation.checkPermissions();
+        const perms = await Geolocation.checkPermissions();
+        if (perms.location !== 'granted') {
+          const req = await Geolocation.requestPermissions();
+          if (req.location !== 'granted') {
+            return { error: 'تم رفض إذن الوصول للموقع الجغرافي. يرجى تفعيله من إعدادات الهاتف.' };
+          }
+        }
       } catch (e) {
-        console.warn('Permissions API not available');
+        console.warn('Geolocation permissions error:', e);
       }
+    }
 
-      if (checkPerms.location !== 'granted') {
+    // Attempt retrieval sequence
+    try {
+      // Attempt 1: Capacitor with High Accuracy
+      try {
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        });
+        return this.formatResult(pos);
+      } catch (e) {
+        console.warn('Capacitor High Accuracy failed, trying Low Accuracy...');
+        
+        // Attempt 2: Capacitor with Low Accuracy (faster, uses Cell/WiFi)
         try {
-          await Geolocation.requestPermissions();
-        } catch (e) {
-          console.warn('Request permissions failed');
+          const pos = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 30000 // Allow cached if recent
+          });
+          return this.formatResult(pos);
+        } catch (e2) {
+          console.warn('Capacitor Location failed entirely.');
         }
       }
 
-      // 2. High Accuracy Attempt with fresh data
-      // We use a larger timeout (20s) to allow GPS hardware time to lock in a real signal
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0 
-      });
-
-      const accuracy = position.coords.accuracy || 1000;
-
-      // If accuracy is worse than 1000m, it's likely IP-based (the "Another City" problem)
-      // We return it but mark it as inaccurate
-      return {
-        coords: {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: accuracy
-        },
-        timestamp: position.timestamp,
-        isAccurate: accuracy <= 50 // User requested 50m threshold
-      };
-
-    } catch (err: any) {
-      console.error('Capacitor Geo failed, switching to Native browser...');
-      
+      // Attempt 3: Web Native API (Fallback)
       if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        console.log('Switching to Web Geolocation API...');
         return new Promise((resolve) => {
-          // Attempt to get clear GPS data
           navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const accuracy = pos.coords.accuracy || 1000;
-              resolve({
-                coords: { 
-                  latitude: pos.coords.latitude, 
-                  longitude: pos.coords.longitude,
-                  accuracy: accuracy
-                },
-                timestamp: pos.timestamp,
-                isAccurate: accuracy <= 50
-              });
+            (pos) => resolve(this.formatResult(pos)),
+            (err) => {
+              console.error('Web Geolocation failed:', err);
+              // Final fallback to IP-based or manual
+              resolve({ error: 'عذراً، فشل تحديد الموقع تلقائياً. يرجى سحب الدبوس يدوياً على الخريطة.' });
             },
-            (error) => {
-              console.error('Final failure');
-              resolve({ error: 'تعذر تحديد موقعك بدقة 50 متر. يرجى تفعيل الـ GPS والتأكد من فتح التطبيق في المتصفح الخارجي.' });
-            },
-            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
           );
         });
       }
 
-      return { error: 'فشل بروتوكول تحديد الموقع. يرجى المحاولة يدوياً.' };
+    } catch (globalErr) {
+      console.error('Global Location Error:', globalErr);
     }
+
+    return { error: 'فشل بروتوكول تحديد الموقع. يرجى وضع الدبوس يدوياً على الخريطة.' };
+  },
+
+  /**
+   * Helper to format different position objects into our standard LocationResult
+   */
+  formatResult(pos: Position | GeolocationPosition): LocationResult {
+    const accuracy = pos.coords.accuracy || 1000;
+    return {
+      coords: {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: accuracy
+      },
+      timestamp: pos.timestamp,
+      isAccurate: accuracy <= 50 // Our threshold for "Guaranteed Doorstep"
+    };
   }
 };
