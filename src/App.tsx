@@ -361,11 +361,11 @@ const InitialTermsScreen = ({ onAccept }: { onAccept: () => void }) => {
       >
         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50 flex-none">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center">
-              <Shield className="text-red-700 w-5 h-5" />
+            <div className="w-10 h-10 bg-green-100 rounded-2xl flex items-center justify-center">
+              <Shield className="text-green-700 w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-red-800">اتفاقية الاستخدام</h2>
+              <h2 className="text-lg font-black text-green-800">اتفاقية الاستخدام</h2>
               <p className="text-[10px] font-bold text-gray-500 italic">مشتل زون - سياسة الخصوصية</p>
             </div>
           </div>
@@ -381,11 +381,13 @@ const InitialTermsScreen = ({ onAccept }: { onAccept: () => void }) => {
             />
             <div className="absolute inset-0 pointer-events-none border-4 border-white/50 rounded-2xl"></div>
           </div>
+        </div>
 
-          <div className="flex-none p-3 bg-red-50/50 rounded-2xl border border-red-100/50">
+        <div className="p-4 bg-white flex flex-col gap-3 flex-none border-t">
+          <div className="p-3 bg-green-50/50 rounded-2xl border border-green-100/50">
             <label className="flex items-center gap-3 cursor-pointer group">
               <div className="flex-1 text-right">
-                <span className="text-[10px] font-black text-gray-700 group-hover:text-red-700 transition-colors italic">
+                <span className="text-[10px] font-black text-gray-700 group-hover:text-green-700 transition-colors italic">
                   أقر بموافقتي الكاملة على كافة بنود اتفاقية الاستخدام وسياسة الخصوصية المعروضة أعلاه.
                 </span>
               </div>
@@ -396,21 +398,19 @@ const InitialTermsScreen = ({ onAccept }: { onAccept: () => void }) => {
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
-                <div className="w-full h-full border-2 border-gray-300 rounded-lg bg-white peer-checked:bg-red-700 peer-checked:border-red-700 transition-all flex items-center justify-center shadow-sm">
+                <div className="w-full h-full border-2 border-gray-300 rounded-lg bg-white peer-checked:bg-green-700 peer-checked:border-green-700 transition-all flex items-center justify-center shadow-sm">
                   <Check className="text-white w-4 h-4 opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all" />
                 </div>
               </div>
             </label>
           </div>
-        </div>
 
-        <div className="p-4 bg-white flex flex-col gap-2 flex-none border-t">
           <button
             disabled={!agreed}
             onClick={onAccept}
             className={`w-full py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
               agreed 
-                ? "bg-red-700 text-white hover:bg-red-800 scale-[1.01]" 
+                ? "bg-green-700 text-white hover:bg-green-800 scale-[1.01]" 
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
@@ -2910,7 +2910,7 @@ const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
       >
         <div className="p-4 border-b flex justify-between items-center bg-gray-50 flex-none">
           <div className="flex items-center space-x-reverse space-x-3">
-            <ShieldCheck className="text-red-700" size={24} />
+            <ShieldCheck className="text-green-700" size={24} />
             <h2 className="text-lg font-black text-gray-900">الاتفاقية والخصوصية</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full text-gray-900">
@@ -2930,14 +2930,14 @@ const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
             <p className="text-[10px] text-gray-400 font-black mb-1">المستند القانوني المعتمد من Google Drive</p>
             <button 
               onClick={() => window.open('https://drive.google.com/file/d/1lfUVjH_DexIVj5amzgcFSaqCmWCOExaI/view?usp=drive_link', '_blank')}
-              className="text-[9px] font-black text-red-700 underline flex items-center justify-center gap-1 mx-auto"
+              className="text-[9px] font-black text-green-700 underline flex items-center justify-center gap-1 mx-auto"
             >
               <ExternalLink size={10} />
               رابط المستند الأصلي
             </button>
           </div>
         </div>
-        <button onClick={onClose} className="mx-6 mb-6 h-14 bg-red-700 text-white rounded-xl font-black shadow-xl flex-none active:scale-95 transition-transform">موافق، إغلاق</button>
+        <button onClick={onClose} className="mx-6 mb-6 h-14 bg-green-700 text-white rounded-xl font-black shadow-xl flex-none active:scale-95 transition-transform">موافق، إغلاق</button>
       </motion.div>
     </div>
   );
