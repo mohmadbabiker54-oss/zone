@@ -357,68 +357,66 @@ const InitialTermsScreen = ({ onAccept }: { onAccept: () => void }) => {
       <motion.div
         initial={{ y: 50, scale: 0.9 }}
         animate={{ y: 0, scale: 1 }}
-        className="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative"
+        className="bg-white rounded-[2rem] w-full max-w-lg max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative"
       >
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50 flex-none">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center">
               <Shield className="text-red-700 w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-red-800">اتفاقية الاستخدام</h2>
+              <h2 className="text-lg font-black text-red-800">اتفاقية الاستخدام</h2>
               <p className="text-[10px] font-bold text-gray-500 italic">مشتل زون - سياسة الخصوصية</p>
             </div>
           </div>
-          <img src="https://i.ibb.co/qFgDcx2b/logo.png" className="w-12 h-12 object-contain opacity-20" alt="logo" />
+          <img src="https://i.ibb.co/qFgDcx2b/logo.png" className="w-10 h-10 object-contain opacity-20" alt="logo" />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-right" dir="rtl">
-          <div className="w-full h-[450px] bg-gray-50 rounded-3xl overflow-hidden border border-gray-100 shadow-inner relative">
+        <div className="flex-1 overflow-hidden p-3 flex flex-col gap-3 text-right" dir="rtl">
+          <div className="flex-1 bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-inner relative min-h-[300px]">
             <iframe 
               src="https://drive.google.com/file/d/1lfUVjH_DexIVj5amzgcFSaqCmWCOExaI/preview" 
               className="w-full h-full border-0"
               title="اتفاقية الاستخدام"
             />
-            {/* Overlay to prevent accidental interactions within iframe while scrolling main content */}
-            <div className="absolute inset-0 pointer-events-none border-4 border-white/50 rounded-3xl"></div>
+            <div className="absolute inset-0 pointer-events-none border-4 border-white/50 rounded-2xl"></div>
           </div>
 
-          <div className="p-4 bg-red-50/50 rounded-3xl border border-red-100/50">
+          <div className="flex-none p-3 bg-red-50/50 rounded-2xl border border-red-100/50">
             <label className="flex items-center gap-3 cursor-pointer group">
               <div className="flex-1 text-right">
-                <span className="text-[11px] font-black text-gray-700 group-hover:text-red-700 transition-colors italic">
-                  أقر بموافقتي الكاملة على كافة بنود اتفاقية الاستخدام وسياسة الخصوصية المعروضة أعلاه والمعتمدة من مشتل زون.
+                <span className="text-[10px] font-black text-gray-700 group-hover:text-red-700 transition-colors italic">
+                  أقر بموافقتي الكاملة على كافة بنود اتفاقية الاستخدام وسياسة الخصوصية المعروضة أعلاه.
                 </span>
               </div>
-              <div className="relative w-8 h-8 shrink-0">
+              <div className="relative w-7 h-7 shrink-0">
                 <input 
                   type="checkbox" 
                   className="peer hidden" 
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
-                <div className="w-full h-full border-2 border-gray-300 rounded-xl bg-white peer-checked:bg-red-700 peer-checked:border-red-700 transition-all flex items-center justify-center shadow-sm">
-                  <Check className="text-white w-5 h-5 opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all" />
+                <div className="w-full h-full border-2 border-gray-300 rounded-lg bg-white peer-checked:bg-red-700 peer-checked:border-red-700 transition-all flex items-center justify-center shadow-sm">
+                  <Check className="text-white w-4 h-4 opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all" />
                 </div>
               </div>
             </label>
           </div>
         </div>
 
-        <div className="p-6 bg-white flex flex-col gap-3">
+        <div className="p-4 bg-white flex flex-col gap-2 flex-none border-t">
           <button
             disabled={!agreed}
             onClick={onAccept}
-            className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
+            className={`w-full py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
               agreed 
-                ? "bg-red-700 text-white hover:bg-red-800 scale-[1.02]" 
+                ? "bg-red-700 text-white hover:bg-red-800 scale-[1.01]" 
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
             <span>دخول التطبيق</span>
             <ArrowRight className="w-4 h-4 rotate-180" />
           </button>
-          <p className="text-center text-[10px] text-gray-400 font-bold italic">يجب الموافقة للمتابعة</p>
         </div>
       </motion.div>
     </motion.div>
@@ -2908,19 +2906,19 @@ const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-2xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+        className="w-full max-w-2xl bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col h-[95vh] max-h-[920px]"
       >
-        <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+        <div className="p-4 border-b flex justify-between items-center bg-gray-50 flex-none">
           <div className="flex items-center space-x-reverse space-x-3">
             <ShieldCheck className="text-red-700" size={24} />
-            <h2 className="text-xl font-black text-gray-900">الاتفاقية والخصوصية</h2>
+            <h2 className="text-lg font-black text-gray-900">الاتفاقية والخصوصية</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full text-gray-900">
             <X size={24} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 text-right" dir="rtl">
-          <div className="w-full h-[500px] bg-gray-50 rounded-3xl overflow-hidden border border-gray-200 shadow-inner mb-6">
+        <div className="flex-1 overflow-hidden p-4 text-right flex flex-col" dir="rtl">
+          <div className="flex-1 bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 shadow-inner mb-4">
             <iframe 
               src="https://drive.google.com/file/d/1lfUVjH_DexIVj5amzgcFSaqCmWCOExaI/preview" 
               className="w-full h-full border-0"
@@ -2928,19 +2926,18 @@ const LegalModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
             />
           </div>
 
-          <div className="bg-gray-100 p-6 rounded-[2rem] text-center border border-gray-200">
-            <p className="text-xs text-gray-400 font-black mb-1">المستند القانوني المعتمد من Google Drive</p>
-            <p className="text-[10px] text-gray-400 font-bold mb-3">آخر تحديث: مايو 2026 - مشتل زون المطور (السودان)</p>
+          <div className="bg-gray-100 p-4 rounded-2xl text-center border border-gray-200 flex-none">
+            <p className="text-[10px] text-gray-400 font-black mb-1">المستند القانوني المعتمد من Google Drive</p>
             <button 
               onClick={() => window.open('https://drive.google.com/file/d/1lfUVjH_DexIVj5amzgcFSaqCmWCOExaI/view?usp=drive_link', '_blank')}
-              className="text-[10px] font-black text-red-700 underline flex items-center justify-center gap-1 mx-auto hover:text-red-900 transition-colors"
+              className="text-[9px] font-black text-red-700 underline flex items-center justify-center gap-1 mx-auto"
             >
-              <ExternalLink size={12} />
-              فتح الرابط المباشر للمستند الأصلي
+              <ExternalLink size={10} />
+              رابط المستند الأصلي
             </button>
           </div>
         </div>
-        <button onClick={onClose} className="m-6 h-14 bg-red-700 text-white rounded-2xl font-black shadow-xl">موافق، إغلاق</button>
+        <button onClick={onClose} className="mx-6 mb-6 h-14 bg-red-700 text-white rounded-xl font-black shadow-xl flex-none active:scale-95 transition-transform">موافق، إغلاق</button>
       </motion.div>
     </div>
   );
@@ -2997,7 +2994,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [cart, setCart] = useState<any[]>([]);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'info' | 'error' } | null>(null);
   const [isCartInflating, setIsCartInflating] = useState(false);
@@ -3137,7 +3133,6 @@ export default function App() {
     if (data.length === 0) return null;
     const keys = Object.keys(data[0]);
     if (keys.length < 9) return null;
-    // الخلية I2 تعني العمود التاسع (index 8) والصف الأول من البيانات بعد الهيدر
     const i2Value = data[0][keys[8]]; 
     return i2Value && i2Value.toString().trim().startsWith('sk-or-v1-') ? i2Value.toString().trim() : null;
   }, [data]);
@@ -3147,21 +3142,16 @@ export default function App() {
     return parseInt(localStorage.getItem('zone_viewed_notifications') || '0');
   });
   
-  // Automatic Notification Pop-up (Once per session - Auto close after 5s)
   useEffect(() => {
     if (!showSplash && notifications.length > 0) {
       const hasShown = sessionStorage.getItem('zone_notified_this_session');
       if (!hasShown) {
-        // Wait a bit after splash for better UX
         const timer = setTimeout(() => {
           setIsNotificationOpen(true);
           sessionStorage.setItem('zone_notified_this_session', 'true');
-          
-          // Auto close after 5 seconds
           const closeTimer = setTimeout(() => {
             setIsNotificationOpen(false);
           }, 5000);
-          
           return () => clearTimeout(closeTimer);
         }, 1500);
         return () => clearTimeout(timer);
@@ -3169,7 +3159,6 @@ export default function App() {
     }
   }, [showSplash, notifications.length]);
 
-  // Update lastViewedCount when opening notifications
   useEffect(() => {
     if (isNotificationOpen && notifications.length > lastViewedCount) {
       setLastViewedCount(notifications.length);
@@ -3272,42 +3261,79 @@ export default function App() {
 
         // 3. Check for changes in Google Sheets via GAS (Professional Fetching)
         try {
+          if (!navigator.onLine && cachedProducts.length > 0) {
+            setLoading(false);
+            return;
+          }
+
           const lastVersion = await getMetadata('data_version');
           
-          setSyncStatus("جاري البحث عن تحديثات...");
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s for check
           
-          // Use 'check' action to see if a full download is needed
-          // زيادة المهلة إلى 45 ثانية لضمان الاستجابة في حال ضعف الإنترنت
-          const response = await fetch(`${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}`, {
-            method: 'GET',
-            mode: 'cors',
-            redirect: 'follow',
-            signal: AbortSignal.timeout(45000) 
-          });
+          let response;
+          try {
+            response = await fetch(`${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}`, {
+              method: 'GET',
+              mode: 'cors',
+              redirect: 'follow',
+              signal: controller.signal
+            });
+          } catch (e) {
+            if (cachedProducts.length > 0) {
+              setLoading(false);
+              return;
+            }
+            throw e;
+          }
+          clearTimeout(timeoutId);
           
-          if (!response.ok) throw new Error(`ERR_SERVER_RESPONSE: ${response.status}`);
+          if (!response.ok) {
+            if (cachedProducts.length > 0) {
+              setLoading(false);
+              return;
+            }
+            throw new Error(`ERR_SERVER_RESPONSE: ${response.status}`);
+          }
+          
           const checkResult = await response.json();
 
           sessionStorage.setItem('zone_sheets_synced', 'true');
 
           // If server says no change, and we have cache, stop here
           if (checkResult && checkResult.changed === false && cachedProducts.length > 0) {
-            console.log("GAS: Data is up-to-date (Version matches).");
-            setSyncStatus(null);
             setLoading(false);
             return;
           }
 
           // Fetch full data if changed or no cache
-          setSyncStatus("جاري تحديث قائمة المنتجات من السحابة...");
-          const fullResponse = await fetch(SYSTEM_GAS_URL, {
-            method: 'GET',
-            mode: 'cors',
-            redirect: 'follow',
-            signal: AbortSignal.timeout(120000) // 120 seconds for full download
-          });
+          const fullController = new AbortController();
+          const fullTimeoutId = setTimeout(() => fullController.abort(), 60000); 
+
+          let fullResponse;
+          try {
+            fullResponse = await fetch(SYSTEM_GAS_URL, {
+              method: 'GET',
+              mode: 'cors',
+              redirect: 'follow',
+              signal: fullController.signal
+            });
+          } catch (e) {
+            if (cachedProducts.length > 0) {
+              setLoading(false);
+              return;
+            }
+            throw e;
+          }
+          clearTimeout(fullTimeoutId);
           
-          if (!fullResponse.ok) throw new Error(`ERR_DATA_FETCH: ${fullResponse.status}`);
+          if (!fullResponse.ok) {
+            if (cachedProducts.length > 0) {
+              setLoading(false);
+              return;
+            }
+            throw new Error(`ERR_DATA_FETCH: ${fullResponse.status}`);
+          }
           const jsonData = await fullResponse.json();
 
           // الاستخراج المخصص من العمود H (Index 7)
@@ -3423,7 +3449,6 @@ export default function App() {
           await saveProducts(finalData);
           await saveMetadata('data_version', currentHash);
           
-          setSyncStatus(null); // Clear sync status on success
           setLoading(false);
           console.log("GAS: Database synced and parsed successfully.");
 
@@ -3455,27 +3480,26 @@ export default function App() {
                             fetchError.message?.toLowerCase().includes('aborted');
           
           if (isTimeout) {
-            userMessage = "انتهت مهلة الاتصال بالإنترنت (الشبكة ضعيفة). جاري العمل بالبيانات المحفوظة حالياً.";
+            userMessage = "انتهت مهلة المزامنة. جاري العمل بالبيانات المحفوظة.";
           } else if (fetchError.message?.includes('Failed to fetch')) {
-            userMessage = "لا يوجد اتصال بالإنترنت. جاري عرض البيانات المحفوظة على جهازك.";
+            userMessage = "تعذر الاتصال بالخادم. جاري عرض البيانات المحفوظة محلياً.";
           }
 
-          // إذا كان لدينا بيانات مخزنة، لا نعرض شاشة الخطأ الكاملة، بل نعرض إشعاراً فقط
+          // إذا كان لدينا بيانات مخزنة، لا نزعج المستخدم بإشعارات متكررة إلا إذا كانت فادحة
           if (cachedProducts.length > 0) {
-            setNotification({ message: userMessage, type: 'info' });
-            setNetworkError(null); // مسح الخطأ لتجنب شاشة التعطل
+            console.warn("GAS Sync failed, using cache:", userMessage);
+            setNetworkError(null); 
+            // Only show notification if it was a forced refresh (not implemented yet, but good practice)
           } else {
             setNetworkError(userMessage);
             setNotification({ message: userMessage, type: 'error' });
           }
           
           setLoading(false);
-          setSyncStatus(null);
         }
       } catch (error) {
         console.error("Error in data synchronization:", error);
         setLoading(false);
-        setSyncStatus(null);
       }
     };
     fetchData();
@@ -4293,6 +4317,33 @@ export default function App() {
             </div>
 
             <div className="flex items-center space-x-reverse space-x-4">
+              <button 
+                onClick={() => {
+                  setIsNotificationOpen(true);
+                  setLastViewedCount(notifications.length);
+                  localStorage.setItem('zone_viewed_notifications', notifications.length.toString());
+                }}
+                className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
+              >
+                <Bell size={26} />
+                {notifications.length > lastViewedCount && (
+                  <motion.div 
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ 
+                      scale: [1, 1.2, 1],
+                      opacity: 1 
+                    }}
+                    transition={{
+                      scale: { repeat: Infinity, duration: 2, ease: "easeInOut" },
+                      opacity: { duration: 0.2 }
+                    }}
+                    className="absolute -top-0.5 -right-0.5 bg-red-600 text-white text-[10px] font-black min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full border-2 border-[#B71C1C] shadow-lg shadow-black/20 z-10"
+                  >
+                    {notifications.length - lastViewedCount}
+                  </motion.div>
+                )}
+              </button>
+
               {cart.length > 0 && (
                 <motion.button
                   initial={{ scale: 0 }}
@@ -4368,33 +4419,6 @@ export default function App() {
               </motion.div>
 
               <button 
-                onClick={() => {
-                  setIsNotificationOpen(true);
-                  setLastViewedCount(notifications.length);
-                  localStorage.setItem('zone_viewed_notifications', notifications.length.toString());
-                }}
-                className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
-              >
-                <Bell size={26} />
-                {notifications.length > lastViewedCount && (
-                  <motion.div 
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ 
-                      scale: [1, 1.2, 1],
-                      opacity: 1 
-                    }}
-                    transition={{
-                      scale: { repeat: Infinity, duration: 2, ease: "easeInOut" },
-                      opacity: { duration: 0.2 }
-                    }}
-                    className="absolute -top-0.5 -right-0.5 bg-red-600 text-white text-[10px] font-black min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full border-2 border-[#B71C1C] shadow-lg shadow-black/20 z-10"
-                  >
-                    {notifications.length - lastViewedCount}
-                  </motion.div>
-                )}
-              </button>
-
-              <button 
                 onClick={() => setIsAboutOpen(true)}
                 className="text-white p-2 hover:bg-white/10 rounded-full transition-colors relative"
               >
@@ -4404,22 +4428,8 @@ export default function App() {
           </div>
         </header>
 
-          <AnimatePresence>
-            {syncStatus && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="bg-yellow-500 py-1.5 px-4 flex items-center justify-center gap-2 overflow-hidden z-[90] shadow-md border-b border-yellow-600"
-              >
-                <RefreshCw size={14} className="text-[#4A3700] animate-spin" />
-                <span className="text-[11px] font-black text-[#4A3700] tracking-tight">{syncStatus}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Scrollable Main Content */}
-          <div id="main-content" className="flex-1 overflow-y-auto relative no-scrollbar pb-8">
+          <div id="main-content" className="flex-1 overflow-y-auto relative no-scrollbar">
             {/* Watermark Background Container */}
             <div className="fixed inset-0 top-[380px] pointer-events-none flex items-center justify-center overflow-hidden z-0">
                <motion.img 
@@ -4549,7 +4559,7 @@ export default function App() {
           </AnimatePresence>
 
           {/* Main Grid with Slide Animation */}
-          <main className={`flex-1 px-4 pb-8 relative z-10 overflow-hidden ${currentLevel === 1 ? 'bg-[#F6F6F8]' : 'bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800'}`}>
+          <main className={`flex-1 px-4 relative z-10 overflow-hidden ${currentLevel === 1 ? 'bg-[#F6F6F8]' : 'bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800'}`}>
             {/* Background pattern removed per user request */}
 
             {loading ? (
@@ -4656,7 +4666,7 @@ export default function App() {
 
           {/* قسم رابط الموقع الإلكتروني والجهة المطورة - يظهر فقط عند وجود بيانات */}
           {((websiteUrl && websiteUrl.startsWith('http')) || footerLine1 || footerLine2) && (
-            <div className="w-full px-6 py-12 flex flex-col items-center space-y-6 bg-gradient-to-t from-green-50/50 to-transparent">
+            <div className="w-full px-6 py-6 flex flex-col items-center space-y-4 bg-gradient-to-t from-green-50/50 to-transparent">
               
               {websiteUrl && websiteUrl.startsWith('http') && (
                 <motion.button
@@ -4697,7 +4707,6 @@ export default function App() {
             </div>
           )}
 
-          <div className="h-4 bg-transparent" />
           </div>
         </motion.div>
       )}
