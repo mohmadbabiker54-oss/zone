@@ -16,6 +16,8 @@ if (typeof window !== 'undefined') {
   defineCustomElements(window);
 }
 import L from 'leaflet';
+import { normalize, transformDriveUrl, getIcon } from './utils';
+import { GardenModal } from './components/GardenModal';
 import { LocationService, LocationResult } from './services/locationService';
 
 // Fix Leaflet icon issues in Vite
@@ -520,7 +522,7 @@ const RegistrationScreen = ({ onComplete, onShowLegal }: { onComplete: (data: Us
                 type="button"
                 onClick={() => setAgreed(!agreed)}
                 className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${
-                  agreed ? 'bg-red-600 border-red-600' : 'border-white/40 bg-transparent'
+                  agreed ? 'bg-green-600 border-green-600' : 'border-white/40 bg-transparent'
                 }`}
               >
                 {agreed && <Check size={16} className="text-white" />}
@@ -1022,6 +1024,8 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
 
   useEffect(() => {
     if (isOpen) {
+      setReceipt(null); // Clear previous receipt to prevent reuse
+      if (fileInputRef.current) fileInputRef.current.value = ''; // Reset file input
       const handleBack = () => onClose();
       window.addEventListener('zone-back-button', handleBack);
 
@@ -1208,7 +1212,9 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
               action: 'management_backup',
               clientName: `${userData.name} ${userData.fatherName}`,
               phone: userData.whatsapp,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              gardenNotes: gardenNotes || "",
+              gardenPhoto: gardenPhoto ? "Check attached PDF for image" : "No image attached"
             })
           });
           
@@ -1733,6 +1739,17 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
                   <img 
                     src={`https://static-maps.yandex.ru/1.x/?ll=${markerPos[1]},${markerPos[0]}&z=18&l=sat&size=450,450&pt=${markerPos[1]},${markerPos[0]},pm2rdl`} 
                     alt="Map"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (!target.src.includes('z=16')) {
+                        // Try lower zoom first
+                        target.src = `https://static-maps.yandex.ru/1.x/?ll=${markerPos[1]},${markerPos[0]}&z=16&l=sat&size=450,450&pt=${markerPos[1]},${markerPos[0]},pm2rdl`;
+                      } else {
+                        // Final fallback to a generic location image or hide
+                        target.src = "https://images.unsplash.com/photo-1526778548025-fa2f459cd5ce?q=80&w=450&auto=format&fit=crop";
+                        target.style.opacity = '0.5';
+                      }
+                    }}
                     style={{ width: '300px', height: '300px', borderRadius: '12px', border: '3px solid #0369a1' }}
                   />
                   <div style={{ flex: 1, textAlign: 'center' }}>
@@ -2336,22 +2353,22 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
           <div key={i} className="absolute inset-0 flex items-center justify-center" style={{ rotate: `${i * 60}deg` }}>
             {/* Pulsating Ray Beam */}
             <motion.div
-              className="absolute w-[12px] origin-bottom"
+              className="absolute w-[16px] origin-bottom"
               style={{ 
                 height: '150vh',
                 bottom: '50%',
-                background: 'linear-gradient(to top, #FFD700, #F59E0B, transparent)',
-                filter: 'blur(1px)',
+                background: 'linear-gradient(to top, rgba(255,215,0,0.8), rgba(245,158,11,0.4), transparent)',
+                filter: 'blur(2px)',
                 mixBlendMode: 'screen'
               }}
               animate={{ 
-                scaleY: [0.8, 1.2, 0.8],
-                opacity: [0.3, 0.6, 0.3],
+                scaleY: [0.9, 1.6, 0.9],
+                opacity: [0.4, 0.8, 0.4],
               }}
               transition={{ 
-                duration: 4,
+                duration: 5,
                 repeat: Infinity,
-                delay: i * 0.2,
+                delay: i * 0.3,
                 ease: "easeInOut"
               }}
             />
@@ -2373,7 +2390,7 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
         />
       </div>
 
-      {/* Core Logo Enclosed in a Circle with Axial Rotation */}
+      {/* Core Logo Enclosed in a Sun-like Circle */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -2381,22 +2398,20 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
           scale: { duration: 0.8, ease: "easeOut" },
           opacity: { duration: 0.5 }
         }}
-        className="relative z-10 w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center translate-z-0"
+        className="relative z-10 w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center"
       >
-        {/* The Circle Enclosure (Prison-like/Sun-like) */}
-        <div className="absolute inset-0 rounded-full border-[6px] border-yellow-500/50 shadow-lg backdrop-blur-sm bg-white/5" />
-        <div className="absolute inset-2 rounded-full border-2 border-white/10" />
+        {/* The Solar Disk (The Sun) */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-500 shadow-[0_0_100px_rgba(255,215,0,0.5)] border-4 border-yellow-200/50 overflow-hidden flex items-center justify-center">
+          <img 
+            src="https://i.ibb.co/qFgDcx2b/logo.png" 
+            alt="Zone Logo"
+            className="w-4/5 h-4/5 object-contain relative z-20 drop-shadow-md mix-blend-multiply"
+            referrerPolicy="no-referrer"
+          />
+        </div>
         
-        <img 
-          src="https://i.ibb.co/qFgDcx2b/logo.png" 
-          alt="Zone Logo"
-          className="w-48 h-48 sm:w-60 sm:h-60 object-contain drop-shadow-xl mix-blend-multiply"
-          style={{ 
-            maskImage: 'radial-gradient(circle, black 55%, transparent 56%)',
-            WebkitMaskImage: 'radial-gradient(circle, black 55%, transparent 56%)'
-          }}
-          referrerPolicy="no-referrer"
-        />
+        {/* Secondary Inner Glow */}
+        <div className="absolute inset-[-10%] rounded-full bg-yellow-400/20 blur-2xl animate-pulse" />
       </motion.div>
     </div>
   );
@@ -2991,6 +3006,9 @@ export default function App() {
   const [data, setData] = useState<CSVRow[]>([]);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [filters, setFilters] = useState<string[]>([]);
+  const [activeItems, setActiveItems] = useState<any[]>([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const lastActiveParentId = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -3059,72 +3077,6 @@ export default function App() {
     setShowCartHint(true);
   };
 
-  const GardenModal = () => (
-    <AnimatePresence>
-      {isGardenSectionOpen && (
-        <motion.div 
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-        >
-          <motion.div 
-            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-            className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative"
-          >
-            <div className="bg-gradient-to-r from-green-800 to-green-600 p-6 text-white text-center">
-              <Sprout className="mx-auto mb-2" size={40} />
-              <div className="absolute top-6 left-6">
-                <button onClick={() => setIsGardenSectionOpen(false)} className="text-white/80 hover:text-white transition-colors"><X size={24} /></button>
-              </div>
-              <h2 className="text-xl font-black">تصميم وتنسيق الحدائق</h2>
-              <p className="text-white/80 text-sm italic">نحول مساحتك إلى جنة خضراء</p>
-            </div>
-            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto no-scrollbar" dir="rtl">
-              {!gardenServiceType ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => setGardenServiceType('creation')} className="flex flex-col items-center p-6 bg-green-50 rounded-2xl border-2 border-green-100 hover:border-green-500 transition-all group">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md mb-3 group-hover:scale-110 transition-transform"><Layout size={32} className="text-green-700" /></div>
-                    <span className="font-black text-green-900">إنشاء حدائق</span>
-                  </button>
-                  <button onClick={() => setGardenServiceType('care')} className="flex flex-col items-center p-6 bg-red-50 rounded-2xl border-2 border-red-100 hover:border-red-500 transition-all group">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md mb-3 group-hover:scale-110 transition-transform"><HeartPulse size={32} className="text-red-700" /></div>
-                    <span className="font-black text-red-900">رعاية حدائق</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border-r-4 border-green-500 p-4 rounded-2xl shadow-sm">
-                    <p className="text-green-900 text-sm font-black flex items-center gap-2 mb-1"><Camera size={18} className="text-green-600" />نرغب برؤية مساحتك الخضراء..</p>
-                    <p className="text-green-700/80 text-[11px] font-bold leading-relaxed">فضلاً منك، التقط صورة مباشرة لحديقتك أو اختر صورة من المعرض لنتمكن من تقديم أفضل نصيحة وتصميم لك.</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => handleGardenCapture('camera')} className="bg-green-600 hover:bg-green-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 font-black text-white transition-all shadow-md active:scale-95"><Camera size={24} /><span className="text-[11px]">تصوير مباشر</span></button>
-                    <button onClick={() => handleGardenCapture('album')} className="bg-white hover:bg-gray-50 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 font-black text-gray-700 transition-all border-2 border-gray-100 shadow-sm active:scale-95"><ImageIcon size={24} className="text-blue-500" /><span className="text-[11px]">من الاستوديو</span></button>
-                    
-                    <input id="garden-gallery" type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setGardenPhoto(URL.createObjectURL(file)); }} />
-                    <input id="garden-camera-native" type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setGardenPhoto(URL.createObjectURL(file)); }} />
-                  </div>
-                  {gardenPhoto && (
-                    <div className="relative w-full h-32 rounded-xl overflow-hidden border-2 border-green-500 shadow-inner">
-                      <img src={gardenPhoto} className="w-full h-full object-cover" alt="Preview" />
-                      <button onClick={() => setGardenPhoto(null)} className="absolute top-2 right-2 bg-red-600/80 backdrop-blur-sm text-white p-1.5 rounded-full hover:bg-red-700 transition-colors shadow-lg"><X size={14}/></button>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-xs font-black text-gray-500 mb-1 mr-1">ملاحظاتك واحتياجاتك</label>
-                    <textarea className="w-full bg-gray-50 rounded-xl p-4 border-2 border-transparent focus:border-green-500 transition-all outline-none min-h-[100px] text-right" placeholder="اكتب هنا ما تحتاجه حديقتك..." value={gardenNotes} onChange={(e) => setGardenNotes(e.target.value)} />
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => handleGardenOrder()} className="flex-1 bg-green-700 hover:bg-green-800 text-white font-black py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"><Send size={20} /> إرسال الطلب</button>
-                    <button onClick={() => setGardenServiceType(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-6 rounded-xl transition-all">رجوع</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -3165,35 +3117,6 @@ export default function App() {
       localStorage.setItem('zone_viewed_notifications', notifications.length.toString());
     }
   }, [isNotificationOpen, notifications.length, lastViewedCount]);
-
-  const normalize = (text: string) => {
-    if (!text) return '';
-    return text
-      .toLowerCase()
-      .replace(/[أإآ]/g, 'ا')
-      .replace(/ة/g, 'ه')
-      .replace(/ى/g, 'ي')
-      .replace(/\s+/g, '')
-      .replace(/ال/g, '') // Remove "Al-" prefix common in Arabic
-      .trim();
-  };
-
-  const transformDriveUrl = (url: string) => {
-    if (!url || typeof url !== 'string') return "";
-    let trimmedUrl = url.trim();
-    if (!trimmedUrl.startsWith('http')) return "";
-    
-    // التحقق من روابط جوجل درايف وتحويلها لروابط مباشرة (Direct Link)
-    if (trimmedUrl.includes('drive.google.com')) {
-      // استخراج المعرف (ID) سواء كان في رابط مشاركة أو رابط عرض أو رابط مباشر
-      const idMatch = trimmedUrl.match(/\/file\/d\/([^\/\?]+)/) || trimmedUrl.match(/id=([^\&]+)/);
-      if (idMatch && idMatch[1]) {
-        return `https://docs.google.com/uc?export=download&id=${idMatch[1]}`;
-      }
-    }
-    
-    return trimmedUrl;
-  };
 
   // Shortcut Logic: Jump to product if match found
   useEffect(() => {
@@ -3272,8 +3195,11 @@ export default function App() {
           const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s for check
           
           let response;
+          const timestamp = Date.now();
+          const checkUrl = `${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}&t=${timestamp}`;
+
           try {
-            response = await fetch(`${SYSTEM_GAS_URL}?action=check&v=${lastVersion || '0'}`, {
+            response = await fetch(checkUrl, {
               method: 'GET',
               mode: 'cors',
               redirect: 'follow',
@@ -3311,8 +3237,10 @@ export default function App() {
           const fullTimeoutId = setTimeout(() => fullController.abort(), 60000); 
 
           let fullResponse;
+          const fullDataUrl = `${SYSTEM_GAS_URL}${SYSTEM_GAS_URL.includes('?') ? '&' : '?'}t=${timestamp}`;
+
           try {
-            fullResponse = await fetch(SYSTEM_GAS_URL, {
+            fullResponse = await fetch(fullDataUrl, {
               method: 'GET',
               mode: 'cors',
               redirect: 'follow',
@@ -3571,103 +3499,122 @@ export default function App() {
     }, 3000);
   };
 
-  // Filtering Logic
-  const currentItems = useMemo(() => {
-    if (data.length === 0) return [];
-    
-    const keys = Object.keys(data[0]);
-    const colA = keys[0] || 'A'; // Column 1 (Name for Product Card)
-    const colB = keys[1] || 'B'; // Column 2 (Price for Product Card)
-    const colC = keys[2] || 'C'; // Column 3 (Level 1 Category)
-    const colD = keys[3] || 'D'; // Column 4 (Level 2 Sub-category)
-    const colE = keys[4] || 'E'; // Column 5 (Image URL 1)
-    const colF = keys[5] || 'F'; // Column 6 (Image URL 2)
-    const colG = keys[6] || 'G'; // Column 7 (External Image URL)
-    
-    const getProductImage = (row: any) => {
-      const imgG = transformDriveUrl(row[colG]);
-      const imgF = transformDriveUrl(row[colF]);
-      const imgE = transformDriveUrl(row[colE]);
-      return imgG || imgF || imgE || "";
+  // --- Hybrid Strategy: Data Binding Logic ---
+  // Protocol: Step 1 (Clear-on-Entry) & Step 2 (Strict ID Binding)
+  useEffect(() => {
+    const fetchLevelData = async () => {
+      if (data.length === 0) return;
+
+      const parentId = filters.length > 0 ? filters[filters.length - 1] : "root";
+      
+      // الخطوة الثانية: الربط الشرطي الصارم (Strict ID Binding)
+      // لا تسمح للـ ViewModel باستخدام أي مُعرف مخزن مسبقاً في الذاكرة
+      // يجب أن تبدأ عملية الاستعلام (Query) فقط عند التأكد من أن المعرف المُمرر يختلف
+      if (parentId === lastActiveParentId.current && activeItems.length > 0) return;
+
+      // الخطوة الأولى: التطهير الفوري (Clear-on-Entry)
+      // تصفير قائمة البيانات الحالية لضمان عدم رؤية بيانات القسم السابق (Zero-Latency Stale Data)
+      setIsTransitioning(true);
+      setActiveItems([]);
+      lastActiveParentId.current = parentId;
+
+      // محاكاة تأخير بسيط لضمان واجهة مستخدم نظيفة (Clean UI) كما هو مطلوب
+      const delay = setTimeout(() => {
+        const keys = Object.keys(data[0]);
+        const colA = keys[0] || 'A';
+        const colB = keys[1] || 'B';
+        const colC = keys[2] || 'C';
+        const colD = keys[3] || 'D';
+        const colE = keys[4] || 'E';
+        const colF = keys[5] || 'F';
+        const colG = keys[6] || 'G';
+
+        const getProductImage = (row: any) => {
+          const imgG = transformDriveUrl(row[colG]);
+          const imgF = transformDriveUrl(row[colF]);
+          const imgE = transformDriveUrl(row[colE]);
+          return imgG || imgF || imgE || "";
+        };
+
+        let items: any[] = [];
+        if (currentLevel === 1) {
+          const unique = Array.from(new Set(data.map(row => row[colC]).filter(val => val && val !== 'عام')));
+          items = unique.map(val => ({ type: 'level1', label: val, id: val }));
+          items.unshift({ type: 'static', label: 'تصميم الحدائق', id: 'garden-design' });
+        } else if (currentLevel === 2) {
+          const filtered = data.filter(row => row[colC] === filters[0]);
+          const unique = Array.from(new Set(filtered.map(row => row[colD]).filter(val => val && val !== 'عام')));
+          const hasEmptySubCategory = filtered.some(row => !row[colD] || String(row[colD]).trim() === '');
+          items = unique.map(val => ({ type: 'level2', label: val, id: val }));
+          if (hasEmptySubCategory && !unique.includes(filters[0])) {
+            items.push({ type: 'level2', label: filters[0], id: `repeat-${filters[0]}` });
+          }
+        } else {
+          const products = data.filter(row => {
+            const matchCat = row[colC] === filters[0];
+            const isRepeated = filters[1] === filters[0];
+            const matchSub = isRepeated 
+              ? (!row[colD] || String(row[colD]).trim() === '' || row[colD] === filters[1])
+              : row[colD] === filters[1];
+            return matchCat && matchSub;
+          });
+          items = products.map((product, i) => ({ 
+            type: 'product',
+            label: product[colA] || product[colD] || product[colC] || "نبات نادر", 
+            id: `product-${i}`,
+            price: product[colB] || "0",
+            image: getProductImage(product)
+          }));
+        }
+
+        setActiveItems(items);
+        setIsTransitioning(false);
+      }, 300);
+
+      return () => clearTimeout(delay);
     };
 
-    let items: any[] = [];
+    fetchLevelData();
+  }, [filters, currentLevel, data]);
 
-    if (currentLevel === 1) {
-      const unique = Array.from(new Set(data.map(row => row[colC]).filter(val => val && val !== 'عام')));
-      items = unique.map(val => ({ type: 'level1', label: val, id: val }));
-      // Add static Garden Design section
-      items.unshift({ type: 'static', label: 'تصميم الحدائق', id: 'garden-design' });
-    } else if (currentLevel === 2) {
-      const filtered = data.filter(row => row[colC] === filters[0]);
-      // Get unique non-empty sub-categories
-      const unique = Array.from(new Set(filtered.map(row => row[colD]).filter(val => val && val !== 'عام')));
-      
-      // Check if there are rows where Column D is empty for this Category
-      const hasEmptySubCategory = filtered.some(row => !row[colD] || String(row[colD]).trim() === '');
-      
-      items = unique.map(val => ({ type: 'level2', label: val, id: val }));
-      
-      // If there are empty sub-categories, repeat the Category name as a sub-category button
-      if (hasEmptySubCategory) {
-        // Avoid duplicates if a sub-category already has the same name as the category
-        if (!unique.includes(filters[0])) {
-          items.push({ type: 'level2', label: filters[0], id: `repeat-${filters[0]}` });
-        }
-      }
-    } else {
-      // Level 3: Products
-      const products = data.filter(row => {
-        const matchCat = row[colC] === filters[0];
-        const isRepeated = filters[1] === filters[0];
-        
-        // If it's a repeated button, match empty Column D
-        // Otherwise match the specific sub-category
-        const matchSub = isRepeated 
-          ? (!row[colD] || String(row[colD]).trim() === '' || row[colD] === filters[1])
-          : row[colD] === filters[1];
-          
-        return matchCat && matchSub;
-      });
-
-      items = products.map((product, i) => ({ 
-        type: 'product',
-        label: product[colA] || product[colD] || product[colC] || "نبات نادر", 
-        id: `product-${i}`,
-        price: product[colB] || "0",
-        image: getProductImage(product)
-      }));
-    }
-
-    // Apply Search Query - Global Smart Search
-    if (searchQuery.trim() !== '') {
+  // Filtering Logic (Simplified to use activeItems and Search)
+  const currentItems = useMemo(() => {
+    if (searchQuery.trim() !== '' && data.length > 0) {
       const normalizedQuery = normalize(searchQuery);
+      const keys = Object.keys(data[0]);
+      const colA = keys[0] || 'A';
+      const colB = keys[1] || 'B';
+      const colD = keys[3] || 'D';
       
-      // Global search across all products (bypassing hierarchy)
-      const allProducts = data.map((product, i) => ({ 
+      return data.map((product, i) => ({ 
         type: 'product',
         label: product[colA] || product[colD] || "نبات نادر", 
         id: `product-search-${i}`,
         price: product[colB] || "0",
-        image: getProductImage(product)
+        image: transformDriveUrl(product[keys[6]] || product[keys[5]] || product[keys[4]])
       })).filter(item => 
         normalize(item.label).startsWith(normalizedQuery) || 
         normalize(item.label).includes(normalizedQuery)
       );
-
-      return allProducts;
     }
-
-    return items;
-  }, [data, currentLevel, filters, searchQuery]);
+    return activeItems;
+  }, [activeItems, searchQuery, data]);
 
   const handleItemClick = (label: string) => {
+    // Force transition state immediately
+    setIsTransitioning(true);
+    setActiveItems([]); // Clear current items for clean entry
+    
     setFilters(prev => [...prev, label]);
     setCurrentLevel(prev => Math.min(prev + 1, 3));
     setSearchQuery(''); // Reset search on navigation
   };
 
   const goBack = () => {
+    // Force transition state immediately
+    setIsTransitioning(true);
+    setActiveItems([]); // Clear current items for clean entry
+
     setFilters(prev => prev.slice(0, -1));
     setCurrentLevel(prev => Math.max(prev - 1, 1));
     setSearchQuery(''); // Reset search on navigation
@@ -3756,414 +3703,6 @@ export default function App() {
     };
   }, [zoomedImage, isPaymentOpen, isInvoiceOpen, isCartDrawerOpen, isGardenSectionOpen, gardenServiceType, isDiagnosisOpen, isLegalOpen, isAboutOpen, isNotificationOpen, showTerms, showRegistration, currentLevel]);
 
-  const getIcon = (label: string, index: number) => {
-    const labelLower = label.toLowerCase();
-    const normalizedLabel = normalize(label);
-    
-    if (normalizedLabel.includes('تصميم') || normalizedLabel.includes('تنسيق') || normalizedLabel.includes('حدائق')) return <Sprout size="8vw" />;
-    
-    // Smart Mapping based on label keywords
-    if (normalizedLabel.includes('شتول') || normalizedLabel.includes('شتله')) return <Sprout size="8vw" />;
-    // Pot Icons Logic - Simplified and synchronized
-    const isPot = normalizedLabel.includes('اصيص') || normalizedLabel.includes('اصايص') || normalizedLabel.includes('مركن') || normalizedLabel.includes('وعاء') || normalizedLabel.includes('اوعيه');
-    
-    // FORCE Main category "أصائص" to use the clay pot icon
-    if (label === 'أصائص' || label === 'أصايص' || label === 'اصائص' || label === 'اصايص') {
-      return (
-        <svg width="10vw" height="10vw" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M7 10h10l-1 9H8l-1-9Z" fill="rgba(255,255,255,0.1)" />
-          <path d="M6 5h12v3H6z" fill="rgba(255,255,255,0.2)" />
-          <path d="M9 13h6" stroke="white" />
-          <path d="M10 16h4" stroke="white" />
-        </svg>
-      );
-    }
-
-    if (isPot || normalizedLabel.includes('فخار') || normalizedLabel.includes('سمنت') || normalizedLabel.includes('استيل')) {
-      // Base Pot Design
-      const BasePot = ({ children }: { children?: ReactNode }) => (
-        <svg width="10vw" height="10vw" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M7 10h10l-1 9H8l-1-9Z" fill="rgba(255,255,255,0.1)" />
-          <path d="M6 5h12v3H6z" fill="rgba(255,255,255,0.2)" />
-          {children}
-        </svg>
-      );
-
-      // Sub-category variations
-      if (normalizedLabel.includes('بلاستيك')) {
-        return (
-          <BasePot>
-            <path d="M8 13h8" stroke="white" opacity="0.4" strokeWidth="1" />
-            <path d="M9 16h6" stroke="white" opacity="0.4" strokeWidth="1" />
-          </BasePot>
-        );
-      }
-      if (normalizedLabel.includes('خزف') || normalizedLabel.includes('سيراميك')) {
-        return (
-          <BasePot>
-            <circle cx="12" cy="14" r="2.5" stroke="white" strokeWidth="1.5" />
-            <circle cx="12" cy="14" r="0.5" fill="white" />
-          </BasePot>
-        );
-      }
-      if (normalizedLabel.includes('استيل') || normalizedLabel.includes('معدن')) {
-        return (
-          <svg width="10vw" height="10vw" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 10h12l-1 10H7l-1-10Z" fill="rgba(255,255,255,0.1)" />
-            <path d="M5 5h14v3H5z" fill="white" />
-            <path d="M8 10v10M12 10v10M16 10v10" stroke="white" strokeWidth="1" opacity="0.4" />
-          </svg>
-        );
-      }
-      if (normalizedLabel.includes('سمنت') || normalizedLabel.includes('اسمنت') || normalizedLabel.includes('خرسان')) {
-        return (
-          <svg width="10vw" height="10vw" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 10h14l-1.5 10h-11L5 10Z" fill="rgba(255,255,255,0.2)" />
-            <path d="M4 5h16v4H4z" fill="white" />
-            <rect x="8" y="12" width="2" height="2" fill="white" />
-            <rect x="14" y="15" width="2" height="2" fill="white" />
-          </svg>
-        );
-      }
-      if (normalizedLabel.includes('زينه') || normalizedLabel.includes('ديكور')) {
-        return (
-          <BasePot>
-            <path d="M12 10v4M10 12h4" stroke="white" />
-          </BasePot>
-        );
-      }
-
-      // Default for Main "Pots" category and "Clay Pots" - Exactly the same
-      return (
-        <svg width="10vw" height="10vw" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M7 10h10l-1 9H8l-1-9Z" fill="rgba(255,255,255,0.1)" />
-          <path d="M6 5h12v3H6z" fill="rgba(255,255,255,0.2)" />
-          <path d="M9 13h6" stroke="white" />
-          <path d="M10 16h4" stroke="white" />
-        </svg>
-      );
-    }
-    if (normalizedLabel.includes('سماد') || normalizedLabel.includes('اسمدة')) return <FlaskConical size="8vw" />;
-    if (normalizedLabel.includes('مبيد') || normalizedLabel.includes('مبيدات')) return <Bug size="8vw" />;
-    if (normalizedLabel.includes('زهر') || normalizedLabel.includes('ورد') || normalizedLabel.includes('زهور')) return <Flower2 size="8vw" />;
-    if (normalizedLabel.includes('شجر') || normalizedLabel.includes('اشجار')) return <Trees size="8vw" />;
-    if (normalizedLabel.includes('صبار') || normalizedLabel.includes('صباريات')) return <Mountain size="8vw" />;
-    if (normalizedLabel.includes('ظل') || normalizedLabel.includes('داخليه')) return <Home size="8vw" />;
-    if (normalizedLabel.includes('خارجي') || normalizedLabel.includes('شمس')) return <Sun size="8vw" />;
-    if (normalizedLabel.includes('متسلق') || normalizedLabel.includes('متسلقات')) return <Infinity size="8vw" />;
-    if (normalizedLabel.includes('عطر') || normalizedLabel.includes('عطريات')) return <Wind size="8vw" />;
-    if (normalizedLabel.includes('فاكهه') || normalizedLabel.includes('فواكه') || normalizedLabel.includes('مثمر')) return (
-      <svg width="10vw" height="10vw" viewBox="0 0 24 24" fill="white">
-        {/* Trunk */}
-        <path d="M12 22c-1 0-1.5-1-1.5-4 0-2 1-4 1.5-6 0.5 2 1.5 4 1.5 6 0 3-.5 4-1.5 4z" />
-        {/* Canopy */}
-        <path d="M12 2C7 2 3 6 3 11c0 3 2 6 5 8M12 2c5 0 9 4 9 9 0 3-2 6-5 8" stroke="white" strokeWidth="1.5" fill="none" />
-        {/* Fruits (Apples) */}
-        <circle cx="12" cy="5" r="1.2" />
-        <circle cx="8" cy="8" r="1.2" />
-        <circle cx="16" cy="8" r="1.2" />
-        <circle cx="12" cy="9" r="1.2" />
-        <circle cx="10" cy="12" r="1.2" />
-        <circle cx="14" cy="12" r="1.2" />
-        <circle cx="7" cy="11" r="1" />
-        <circle cx="17" cy="11" r="1" />
-        <circle cx="12" cy="14" r="1" />
-        <circle cx="9" cy="5" r="0.8" />
-        <circle cx="15" cy="5" r="0.8" />
-        <circle cx="12" cy="17" r="0.8" />
-      </svg>
-    );
-    if (normalizedLabel.includes('خضر') || normalizedLabel.includes('خضروات')) return <Carrot size="8vw" />;
-    if (normalizedLabel.includes('ادوات') || normalizedLabel.includes('معدات')) return (
-      <svg width="10vw" height="10vw" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {/* Pruning Shears (Scissors) */}
-        <circle cx="6" cy="18" r="2" />
-        <circle cx="18" cy="18" r="2" />
-        <path d="M8 17l10-10" />
-        <path d="M16 17L6 7" />
-        {/* Tiller/Rake (عذاقة) */}
-        <path d="M12 4v4" strokeWidth="1.5" />
-        <path d="M9 4h6" strokeWidth="1.5" />
-        <path d="M9 2l1-2M15 2l-1-2" strokeWidth="1" opacity="0.6" />
-      </svg>
-    );
-    if (normalizedLabel.includes('نخيل') || normalizedLabel.includes('نخله')) return <Palmtree size="8vw" />;
-    if (normalizedLabel.includes('شجيرات')) return <Shrub size="8vw" />;
-    if (normalizedLabel.includes('طبيه') || normalizedLabel.includes('علاج')) return <Pill size="8vw" />;
-    if (normalizedLabel.includes('زينه')) return <Flower size="8vw" />;
-    if (labelLower.includes('هديه') || labelLower.includes('هدايا')) return <Gift size="8vw" />;
-    if (labelLower.includes('تربه') || labelLower.includes('طين')) return <Mountain size="8vw" />;
-    if (labelLower.includes('ري') || labelLower.includes('ماء')) return <Droplets size="8vw" />;
-    if (labelLower.includes('مقص') || labelLower.includes('تقليم')) return <Scissors size="8vw" />;
-    if (labelLower.includes('كوريك') || labelLower.includes('حفر')) return <Shovel size="8vw" />;
-    if (labelLower.includes('صيانه')) return <Wrench size="8vw" />;
-    if (labelLower.includes('متجر') || labelLower.includes('محل')) return <Store size="8vw" />;
-    if (labelLower.includes('كرتون') || labelLower.includes('تغليف')) return <Package size="8vw" />;
-    if (labelLower.includes('صنوبر')) return <TreePine size="8vw" />;
-    if (labelLower.includes('كرز')) return <Cherry size="8vw" />;
-    if (labelLower.includes('تفاح')) return <Apple size="8vw" />;
-    if (labelLower.includes('موز')) return <Banana size="8vw" />;
-    if (labelLower.includes('حمضيات') || labelLower.includes('ليمون')) return <Citrus size="8vw" />;
-    if (labelLower.includes('قمح') || labelLower.includes('محاصيل')) return <Wheat size="8vw" />;
-    if (labelLower.includes('بحر') || labelLower.includes('نيل')) return <Waves size="8vw" />;
-    if (labelLower.includes('نار') || labelLower.includes('حراره')) return <Flame size="8vw" />;
-    if (labelLower.includes('كهرباء') || labelLower.includes('طاقه')) return <Zap size="8vw" />;
-    if (labelLower.includes('حب') || labelLower.includes('قلب')) return <Heart size="8vw" />;
-    if (labelLower.includes('نجمه') || labelLower.includes('مميز')) return <Star size="8vw" />;
-    if (labelLower.includes('ع عالم') || labelLower.includes('دولي')) return <Globe size="8vw" />;
-    if (labelLower.includes('بوصله') || labelLower.includes('اتجاه')) return <Compass size="8vw" />;
-    if (labelLower.includes('خريطه')) return <Map size="8vw" />;
-    if (labelLower.includes('مرسى')) return <Anchor size="8vw" />;
-    if (labelLower.includes('دراجه')) return <Bike size="8vw" />;
-    if (labelLower.includes('سياره')) return <Car size="8vw" />;
-    if (labelLower.includes('طائره')) return <Plane size="8vw" />;
-    if (labelLower.includes('قطار')) return <Train size="8vw" />;
-    if (labelLower.includes('موسيقى')) return <Music size="8vw" />;
-    if (labelLower.includes('فيديو')) return <Video size="8vw" />;
-    if (labelLower.includes('مايك')) return <Mic size="8vw" />;
-    if (labelLower.includes('سماعه')) return <Headphones size="8vw" />;
-    if (labelLower.includes('كتاب')) return <Book size="8vw" />;
-    if (labelLower.includes('قلم')) return <Pen size="8vw" />;
-    if (labelLower.includes('الوان')) return <Palette size="8vw" />;
-    if (labelLower.includes('العاب')) return <Gamepad size="8vw" />;
-    if (labelLower.includes('كاس')) return <Trophy size="8vw" />;
-    if (labelLower.includes('هدف')) return <Target size="8vw" />;
-    if (labelLower.includes('علم')) return <Flag size="8vw" />;
-    if (labelLower.includes('قهوه')) return <Coffee size="8vw" />;
-    if (labelLower.includes('طعام')) return <Utensils size="8vw" />;
-    if (labelLower.includes('ماء')) return <GlassWater size="8vw" />;
-    if (labelLower.includes('بيتزا')) return <Pizza size="8vw" />;
-    if (labelLower.includes('ايسكريم')) return <IceCream size="8vw" />;
-    if (labelLower.includes('كيك')) return <Cake size="8vw" />;
-    if (labelLower.includes('بسكويت')) return <Cookie size="8vw" />;
-    if (labelLower.includes('حلاوه')) return <Candy size="8vw" />;
-    if (labelLower.includes('بيض')) return <Egg size="8vw" />;
-    if (labelLower.includes('سمك')) return <Fish size="8vw" />;
-    if (labelLower.includes('عظم')) return <Bone size="8vw" />;
-    if (labelLower.includes('حيوان')) return <PawPrint size="8vw" />;
-    if (labelLower.includes('طير')) return <Bird size="8vw" />;
-    if (labelLower.includes('ارنب')) return <Rabbit size="8vw" />;
-    if (labelLower.includes('سلحفاه')) return <Turtle size="8vw" />;
-    if (labelLower.includes('حلزون')) return <Snail size="8vw" />;
-    if (labelLower.includes('صدف')) return <Shell size="8vw" />;
-    if (labelLower.includes('ريشه')) return <Feather size="8vw" />;
-    if (labelLower.includes('مظله')) return <Umbrella size="8vw" />;
-    if (labelLower.includes('خيمه')) return <Tent size="8vw" />;
-    if (labelLower.includes('منظار')) return <Binoculars size="8vw" />;
-    if (labelLower.includes('تلسكوب')) return <Telescope size="8vw" />;
-    if (labelLower.includes('مجهر')) return <Microscope size="8vw" />;
-    if (labelLower.includes('سماعه_طبيه')) return <Stethoscope size="8vw" />;
-    if (labelLower.includes('نشاط')) return <Activity size="8vw" />;
-    if (labelLower.includes('نبض')) return <HeartPulse size="8vw" />;
-    if (labelLower.includes('حراره')) return <Thermometer size="8vw" />;
-    if (labelLower.includes('برق')) return <CloudLightning size="8vw" />;
-    if (labelLower.includes('مطر')) return <CloudRain size="8vw" />;
-    if (labelLower.includes('ثلج')) return <CloudSnow size="8vw" />;
-    if (labelLower.includes('قمر')) return <Moon size="8vw" />;
-    if (labelLower.includes('شروق')) return <Sunrise size="8vw" />;
-    if (labelLower.includes('غروب')) return <Sunset size="8vw" />;
-    if (labelLower.includes('قوس_قزح')) return <Rainbow size="8vw" />;
-    if (labelLower.includes('لمعان')) return <Sparkles size="8vw" />;
-    if (labelLower.includes('درع')) return <Shield size="8vw" />;
-    if (labelLower.includes('مفتاح')) return <Key size="8vw" />;
-    if (labelLower.includes('قفل')) return <LockKeyhole size="8vw" />;
-    if (labelLower.includes('عين')) return <Eye size="8vw" />;
-    if (labelLower.includes('بصمه')) return <Fingerprint size="8vw" />;
-    if (labelLower.includes('معالج')) return <Cpu size="8vw" />;
-    if (labelLower.includes('قرص')) return <HardDrive size="8vw" />;
-    if (labelLower.includes('قاعده_بيانات')) return <Database size="8vw" />;
-    if (labelLower.includes('خادم')) return <Server size="8vw" />;
-    if (labelLower.includes('شاشه')) return <Monitor size="8vw" />;
-    if (labelLower.includes('محمول')) return <Laptop size="8vw" />;
-    if (labelLower.includes('تابلت')) return <Tablet size="8vw" />;
-    if (labelLower.includes('طابعه')) return <Printer size="8vw" />;
-    if (labelLower.includes('فاره')) return <Mouse size="8vw" />;
-    if (labelLower.includes('لوحه_مفاتيح')) return <Keyboard size="8vw" />;
-    if (labelLower.includes('مكبر_صوت')) return <Speaker size="8vw" />;
-    if (labelLower.includes('تلفاز')) return <Tv size="8vw" />;
-    if (labelLower.includes('راديو')) return <Radio size="8vw" />;
-    if (labelLower.includes('بث')) return <Cast size="8vw" />;
-    if (labelLower.includes('واي_فاي')) return <Wifi size="8vw" />;
-    if (labelLower.includes('بلوتوث')) return <Bluetooth size="8vw" />;
-    if (labelLower.includes('بطاريه')) return <Battery size="8vw" />;
-    if (labelLower.includes('قابس')) return <Plug size="8vw" />;
-    if (labelLower.includes('مصباح')) return <Lightbulb size="8vw" />;
-    if (labelLower.includes('كشاف')) return <Flashlight size="8vw" />;
-    if (labelLower.includes('حاسبه')) return <Calculator size="8vw" />;
-    if (labelLower.includes('تقويم')) return <Calendar size="8vw" />;
-    if (labelLower.includes('بريد')) return <Mail size="8vw" />;
-    if (labelLower.includes('صندوق')) return <Inbox size="8vw" />;
-    if (labelLower.includes('ارسال')) return <Send size="8vw" />;
-    if (labelLower.includes('ارشيف')) return <Archive size="8vw" />;
-    if (labelLower.includes('خوذه')) return <HardHat size="8vw" />;
-    if (labelLower.includes('بناء')) return <Construction size="8vw" />;
-    if (labelLower.includes('شاحنه')) return <Truck size="8vw" />;
-    if (labelLower.includes('حافله')) return <Bus size="8vw" />;
-    if (labelLower.includes('سفينه')) return <Ship size="8vw" />;
-    if (labelLower.includes('ترام')) return <TramFront size="8vw" />;
-    if (labelLower.includes('تلفريك')) return <CableCar size="8vw" />;
-    if (labelLower.includes('جبل')) return <MountainSnow size="8vw" />;
-    if (labelLower.includes('غابه')) return <TreesIcon size="8vw" />;
-    if (labelLower.includes('شجره')) return <TreeDeciduous size="8vw" />;
-    if (labelLower.includes('برسيم')) return <Clover size="8vw" />;
-    if (labelLower.includes('نبته')) return <Flower size="8vw" />;
-    if (labelLower.includes('حمض')) return <Dna size="8vw" />;
-    if (labelLower.includes('ذره')) return <Atom size="8vw" />;
-    if (labelLower.includes('مغناطيس')) return <Magnet size="8vw" />;
-    if (labelLower.includes('تخرج')) return <GraduationCap size="8vw" />;
-    if (labelLower.includes('مدرسه')) return <School size="8vw" />;
-    if (labelLower.includes('مكتبه')) return <Library size="8vw" />;
-    if (labelLower.includes('كنيسه')) return <Church size="8vw" />;
-    if (labelLower.includes('فندق')) return <Hotel size="8vw" />;
-    if (labelLower.includes('مستشفى')) return <Hospital size="8vw" />;
-    if (labelLower.includes('مصنع')) return <Factory size="8vw" />;
-    if (labelLower.includes('مستودع')) return <Warehouse size="8vw" />;
-    if (labelLower.includes('حقيبه')) return <ShoppingBag size="8vw" />;
-    if (labelLower.includes('بطاقه')) return <Tag size="8vw" />;
-    if (labelLower.includes('تذكره')) return <Ticket size="8vw" />;
-    if (labelLower.includes('محفظه')) return <Wallet size="8vw" />;
-    if (labelLower.includes('عملات')) return <Coins size="8vw" />;
-    if (labelLower.includes('نقد')) return <Banknote size="8vw" />;
-    if (labelLower.includes('ايصال')) return <Receipt size="8vw" />;
-    if (labelLower.includes('رسم_بياني')) return <BarChart size="8vw" />;
-    if (labelLower.includes('دائره')) return <PieChart size="8vw" />;
-    if (labelLower.includes('خط')) return <LineChart size="8vw" />;
-    if (labelLower.includes('مساحه')) return <AreaChart size="8vw" />;
-    if (labelLower.includes('عرض')) return <Presentation size="8vw" />;
-    if (labelLower.includes('لغات')) return <Languages size="8vw" />;
-    if (labelLower.includes('دردشه')) return <MessageSquare size="8vw" />;
-    if (labelLower.includes('دائره_دردشه')) return <MessageCircle size="8vw" />;
-    if (labelLower.includes('هاتف')) return <Phone size="8vw" />;
-    if (labelLower.includes('مشاركه')) return <Share2 size="8vw" />;
-    if (labelLower.includes('رابط_خارجي')) return <ExternalLink size="8vw" />;
-    if (labelLower.includes('رابط')) return <Link size="8vw" />;
-    if (labelLower.includes('مشبك')) return <Paperclip size="8vw" />;
-    if (labelLower.includes('اشاره')) return <Bookmark size="8vw" />;
-    if (labelLower.includes('ملاحظه')) return <StickyNote size="8vw" />;
-    if (labelLower.includes('مجلد')) return <Folder size="8vw" />;
-    if (labelLower.includes('ملف')) return <File size="8vw" />;
-    if (labelLower.includes('ملفات')) return <Files size="8vw" />;
-    if (labelLower.includes('صوره')) return <Image size="8vw" />;
-    if (labelLower.includes('تشغيل')) return <Play size="8vw" />;
-    if (labelLower.includes('توقف')) return <Pause size="8vw" />;
-    if (labelLower.includes('مربع')) return <Square size="8vw" />;
-    if (labelLower.includes('دائره_شكل')) return <Circle size="8vw" />;
-    if (labelLower.includes('مثلث')) return <Triangle size="8vw" />;
-    if (labelLower.includes('سداسي')) return <Hexagon size="8vw" />;
-    if (labelLower.includes('خماسي')) return <Pentagon size="8vw" />;
-    if (labelLower.includes('ثماني')) return <Octagon size="8vw" />;
-    if (labelLower.includes('ابتسامه')) return <Smile size="8vw" />;
-    if (labelLower.includes('حزن')) return <Frown size="8vw" />;
-    if (labelLower.includes('عادي')) return <Meh size="8vw" />;
-    if (labelLower.includes('غضب')) return <Angry size="8vw" />;
-    if (labelLower.includes('ضحك')) return <Laugh size="8vw" />;
-    if (labelLower.includes('شبح')) return <Ghost size="8vw" />;
-    if (labelLower.includes('جمجمه')) return <Skull size="8vw" />;
-    if (labelLower.includes('تاج')) return <Crown size="8vw" />;
-    if (labelLower.includes('جوهره')) return <Gem size="8vw" />;
-    if (labelLower.includes('ميداليه')) return <Medal size="8vw" />;
-    if (labelLower.includes('جائزه')) return <Award size="8vw" />;
-    if (labelLower.includes('وسام')) return <Badge size="8vw" />;
-    if (labelLower.includes('صح')) return <Check size="8vw" />;
-    if (labelLower.includes('ناقص')) return <Minus size="8vw" />;
-    if (labelLower.includes('زائد')) return <Plus size="8vw" />;
-    if (labelLower.includes('يساوي')) return <Equal size="8vw" />;
-    if (labelLower.includes('قسمه')) return <Divide size="8vw" />;
-    if (labelLower.includes('نسبه')) return <Percent size="8vw" />;
-    if (labelLower.includes('هاشتاق')) return <Hash size="8vw" />;
-    if (labelLower.includes('ات')) return <AtSign size="8vw" />;
-    if (labelLower.includes('امر')) return <Command size="8vw" />;
-    if (labelLower.includes('خيار')) return <Option size="8vw" />;
-    if (labelLower.includes('اعلى')) return <ArrowUp size="8vw" />;
-    if (labelLower.includes('اسفل')) return <ArrowDown size="8vw" />;
-    if (labelLower.includes('يسار')) return <ArrowLeft size="8vw" />;
-    if (labelLower.includes('يمين')) return <ArrowRight size="8vw" />;
-    if (labelLower.includes('تخطيط')) return <Layout size="8vw" />;
-    if (labelLower.includes('اعمده')) return <Columns size="8vw" />;
-    if (labelLower.includes('صفوف')) return <Rows size="8vw" />;
-    if (labelLower.includes('شبكه')) return <Grid size="8vw" />;
-    if (labelLower.includes('قائمه')) return <List size="8vw" />;
-    if (labelLower.includes('محاذاه_يسار')) return <AlignLeft size="8vw" />;
-    if (labelLower.includes('محاذاه_وسط')) return <AlignCenter size="8vw" />;
-    if (labelLower.includes('محاذاه_يمين')) return <AlignRight size="8vw" />;
-    if (labelLower.includes('محاذاه_ضبط')) return <AlignJustify size="8vw" />;
-    if (labelLower.includes('عريض')) return <Bold size="8vw" />;
-    if (labelLower.includes('مائل')) return <Italic size="8vw" />;
-    if (labelLower.includes('تحته_خط')) return <Underline size="8vw" />;
-    if (labelLower.includes('مشطوب')) return <Strikethrough size="8vw" />;
-    if (labelLower.includes('كود')) return <Code size="8vw" />;
-
-    // Large pool of icons for fallback to ensure no repetition
-    const iconPool = [
-      <Sprout size="8vw" />, <Flower2 size="8vw" />, <Trees size="8vw" />, <Leaf size="8vw" />,
-      <Container size="8vw" />, <FlaskConical size="8vw" />, <Bug size="8vw" />, <Droplets size="8vw" />,
-      <Sun size="8vw" />, <Cloud size="8vw" />, <Wind size="8vw" />, <Mountain size="8vw" />,
-      <Infinity size="8vw" />, <Grape size="8vw" />, <Carrot size="8vw" />, <Hammer size="8vw" />,
-      <Home size="8vw" />, <Palmtree size="8vw" />, <Shrub size="8vw" />, <Mountain size="8vw" />,
-      <Pill size="8vw" />, <Scissors size="8vw" />, <Shovel size="8vw" />, <Wrench size="8vw" />,
-      <Package size="8vw" />, <Store size="8vw" />, <Gift size="8vw" />, <TreePine size="8vw" />,
-      <Cherry size="8vw" />, <Apple size="8vw" />, <Banana size="8vw" />, <Citrus size="8vw" />,
-      <Wheat size="8vw" />, <Waves size="8vw" />, <Flame size="8vw" />, <Zap size="8vw" />,
-      <Heart size="8vw" />, <Star size="8vw" />, <Globe size="8vw" />, <Compass size="8vw" />,
-      <Map size="8vw" />, <Anchor size="8vw" />, <Bike size="8vw" />, <Car size="8vw" />,
-      <Plane size="8vw" />, <Train size="8vw" />, <Music size="8vw" />, <Video size="8vw" />,
-      <Mic size="8vw" />, <Headphones size="8vw" />, <Book size="8vw" />, <Pen size="8vw" />,
-      <Palette size="8vw" />, <Gamepad size="8vw" />, <Trophy size="8vw" />, <Target size="8vw" />,
-      <Flag size="8vw" />, <Coffee size="8vw" />, <Utensils size="8vw" />, <GlassWater size="8vw" />,
-      <Pizza size="8vw" />, <IceCream size="8vw" />, <Cake size="8vw" />, <Cookie size="8vw" />,
-      <Candy size="8vw" />, <Egg size="8vw" />, <Fish size="8vw" />, <Bone size="8vw" />,
-      <PawPrint size="8vw" />, <Bird size="8vw" />, <Rabbit size="8vw" />, <Turtle size="8vw" />,
-      <Snail size="8vw" />, <Shell size="8vw" />, <Feather size="8vw" />, <Umbrella size="8vw" />,
-      <Tent size="8vw" />, <Binoculars size="8vw" />, <Telescope size="8vw" />, <Microscope size="8vw" />,
-      <Stethoscope size="8vw" />, <Activity size="8vw" />, <HeartPulse size="8vw" />, <Thermometer size="8vw" />,
-      <CloudLightning size="8vw" />, <CloudRain size="8vw" />, <CloudSnow size="8vw" />, <Moon size="8vw" />,
-      <Sunrise size="8vw" />, <Sunset size="8vw" />, <Rainbow size="8vw" />, <Sparkles size="8vw" />,
-      <Shield size="8vw" />, <Key size="8vw" />, <LockKeyhole size="8vw" />, <Eye size="8vw" />,
-      <Fingerprint size="8vw" />, <Cpu size="8vw" />, <HardDrive size="8vw" />, <Database size="8vw" />,
-      <Server size="8vw" />, <Monitor size="8vw" />, <Laptop size="8vw" />, <Tablet size="8vw" />,
-      <Printer size="8vw" />, <Mouse size="8vw" />, <Keyboard size="8vw" />, <Speaker size="8vw" />,
-      <Tv size="8vw" />, <Radio size="8vw" />, <Cast size="8vw" />, <Wifi size="8vw" />,
-      <Bluetooth size="8vw" />, <Battery size="8vw" />, <Plug size="8vw" />, <Lightbulb size="8vw" />,
-      <Flashlight size="8vw" />, <Calculator size="8vw" />, <Calendar size="8vw" />, <Mail size="8vw" />,
-      <Inbox size="8vw" />, <Send size="8vw" />, <Archive size="8vw" />, <HardHat size="8vw" />,
-      <Construction size="8vw" />, <Truck size="8vw" />, <Bus size="8vw" />, <Ship size="8vw" />,
-      <TramFront size="8vw" />, <CableCar size="8vw" />, <MountainSnow size="8vw" />, <TreeDeciduous size="8vw" />,
-      <Clover size="8vw" />, <Flower size="8vw" />, <Dna size="8vw" />, <Atom size="8vw" />,
-      <Magnet size="8vw" />, <GraduationCap size="8vw" />, <School size="8vw" />, <Library size="8vw" />,
-      <Church size="8vw" />, <Hotel size="8vw" />, <Hospital size="8vw" />, <Factory size="8vw" />,
-      <Warehouse size="8vw" />, <ShoppingBag size="8vw" />, <Tag size="8vw" />, <Ticket size="8vw" />,
-      <Wallet size="8vw" />, <Coins size="8vw" />, <Banknote size="8vw" />, <Receipt size="8vw" />,
-      <BarChart size="8vw" />, <PieChart size="8vw" />, <LineChart size="8vw" />, <AreaChart size="8vw" />,
-      <Presentation size="8vw" />, <Languages size="8vw" />, <MessageSquare size="8vw" />, <MessageCircle size="8vw" />,
-      <Phone size="8vw" />, <Share2 size="8vw" />, <ExternalLink size="8vw" />, <Link size="8vw" />,
-      <Paperclip size="8vw" />, <Bookmark size="8vw" />, <StickyNote size="8vw" />, <Folder size="8vw" />,
-      <File size="8vw" />, <Files size="8vw" />, <Image size="8vw" />, <Play size="8vw" />,
-      <Pause size="8vw" />, <Square size="8vw" />, <Circle size="8vw" />, <Triangle size="8vw" />,
-      <Hexagon size="8vw" />, <Pentagon size="8vw" />, <Octagon size="8vw" />, <Smile size="8vw" />,
-      <Frown size="8vw" />, <Meh size="8vw" />, <Angry size="8vw" />, <Laugh size="8vw" />,
-      <Ghost size="8vw" />, <Skull size="8vw" />,
-      <Crown size="8vw" />, <Gem size="8vw" />, <Medal size="8vw" />, <Award size="8vw" />,
-      <Badge size="8vw" />, <Check size="8vw" />, <Minus size="8vw" />, <Plus size="8vw" />,
-      <Equal size="8vw" />, <Divide size="8vw" />, <Percent size="8vw" />, <Hash size="8vw" />,
-      <AtSign size="8vw" />, <Command size="8vw" />, <Option size="8vw" />,
-      <ArrowUp size="8vw" />, <ArrowDown size="8vw" />, <ArrowLeft size="8vw" />, <ArrowRight size="8vw" />,
-      <Layout size="8vw" />, <Columns size="8vw" />, <Rows size="8vw" />, <Grid size="8vw" />,
-      <List size="8vw" />, <AlignLeft size="8vw" />, <AlignCenter size="8vw" />, <AlignRight size="8vw" />,
-      <AlignJustify size="8vw" />, <Bold size="8vw" />, <Italic size="8vw" />, <Underline size="8vw" />,
-      <Strikethrough size="8vw" />, <Code size="8vw" />
-    ];
-
-    // Simple hash function to pick a unique icon from the pool if no keyword match
-    let hash = 0;
-    for (let i = 0; i < label.length; i++) {
-      hash = ((hash << 5) - hash) + label.charCodeAt(i);
-      hash |= 0; // Convert to 32bit integer
-    }
-    const poolIndex = Math.abs(hash) % iconPool.length;
-    
-    return iconPool[poolIndex];
-  };
-
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans overflow-x-hidden relative" dir="rtl">
       <audio ref={drumLockAudio} src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" />
@@ -4223,6 +3762,9 @@ export default function App() {
           setIsPaymentOpen(false);
           setShowSuccess(true);
           setCart([]);
+          setGardenPhoto(null);
+          setGardenNotes('');
+          setGardenServiceType(null);
           setIsLocked(false);
         }}
       />
@@ -4252,7 +3794,18 @@ export default function App() {
         onShowPrivacy={() => setIsLegalOpen(true)}
       />
 
-      <GardenModal />
+      <GardenModal 
+        isOpen={isGardenSectionOpen}
+        onClose={() => setIsGardenSectionOpen(false)}
+        serviceType={gardenServiceType}
+        setServiceType={setGardenServiceType}
+        photo={gardenPhoto}
+        setPhoto={setGardenPhoto}
+        notes={gardenNotes}
+        setNotes={setGardenNotes}
+        onCapture={handleGardenCapture}
+        onOrder={handleGardenOrder}
+      />
 
       {!showSplash && !showRegistration && (
         <motion.div 
@@ -4262,8 +3815,8 @@ export default function App() {
           className="flex flex-col h-[100dvh] relative overflow-hidden"
         >
           {/* Header - Fixed/Frozen in place */}
-          <header className="bg-[#B71C1C] pt-[env(safe-area-inset-top)] min-h-[4rem] flex-none flex flex-col shadow-2xl z-[100] w-full border-b border-white/20">
-            <div className="h-16 flex items-center justify-between px-4 w-full">
+          <header className="bg-[#B71C1C] pt-[env(safe-area-inset-top)] min-h-[3.5rem] flex-none flex flex-col shadow-2xl z-[100] w-full border-b border-white/20">
+            <div className="h-14 flex items-center justify-between px-4 w-full">
               <div className="flex items-center space-x-reverse space-x-3">
               {currentLevel > 1 && (
                 <motion.button 
@@ -4466,7 +4019,7 @@ export default function App() {
           )}
 
           {/* Dynamic Filter Path / Royal Banner */}
-          <div className="px-2 py-4 flex flex-col space-y-3 bg-transparent z-10">
+          <div className="px-2 py-2 flex flex-col space-y-2 bg-transparent z-10">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-reverse space-x-2">
                 <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
@@ -4478,19 +4031,19 @@ export default function App() {
             </div>
 
             {/* Combined Search and Diagnosis Row - Each taking half width to save space */}
-            <div className="flex gap-4 mb-4">
+            <div className="flex gap-2 mb-2">
               {/* 3D Smart Search Bar - Half Width */}
               <div className="flex-1 relative group perspective-1000">
                 <motion.div
                   animate={{
                     boxShadow: isSearchFocused 
-                      ? "0 4px 15px rgba(46, 125, 50, 0.4)" 
-                      : "0 6px 0 #1B5E20, 0 10px 15px rgba(0,0,0,0.15)",
-                    y: isSearchFocused ? 2 : 0
+                      ? "0 2px 10px rgba(46, 125, 50, 0.4)" 
+                      : "0 4px 0 #1B5E20, 0 6px 10px rgba(0,0,0,0.15)",
+                    y: isSearchFocused ? 1 : 0
                   }}
-                  className={`relative w-full h-16 bg-[#2E7D32] rounded-2xl border-2 transition-all duration-300 overflow-hidden ${
+                  className={`relative w-full h-12 bg-[#2E7D32] rounded-2xl border-2 transition-all duration-300 overflow-hidden ${
                     isSearchFocused ? 'border-green-400' : 'border-[#1B5E20]/60'
-                  } shadow-[0_6px_0_#1B5E20,0_10px_15px_rgba(0,0,0,0.15)] active:translate-y-[4px] active:shadow-[0_2px_0_#1B5E20,0_4px_8px_rgba(0,0,0,0.1)]`}
+                  } shadow-[0_4px_0_#1B5E20,0_6px_10px_rgba(0,0,0,0.15)] active:translate-y-[2px] active:shadow-[0_1px_0_#1B5E20,0_2px_4px_rgba(0,0,0,0.1)]`}
                 >
                   <input 
                     type="text" 
@@ -4499,11 +4052,11 @@ export default function App() {
                     onFocus={() => setIsSearchFocused(true)}
                     onBlur={() => setIsSearchFocused(false)}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-full bg-transparent px-10 text-sm font-black text-white focus:outline-none placeholder:text-white/40 relative z-10"
+                    className="w-full h-full bg-transparent px-8 text-sm font-black text-white focus:outline-none placeholder:text-white/40 relative z-10"
                     dir="rtl"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                    <Search size={20} className="text-white opacity-80" />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                    <Search size={18} className="text-white opacity-80" />
                   </div>
                 </motion.div>
               </div>
@@ -4513,14 +4066,14 @@ export default function App() {
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setIsDiagnosisOpen(true)}
-                className="flex-1 h-16 bg-[#2E7D32] text-white rounded-2xl font-black text-xs shadow-[0_6px_0_#1B5E20,0_10px_15px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center border-b-2 border-white/10 relative overflow-hidden group active:translate-y-[4px] active:shadow-[0_2px_0_#1B5E20,0_4px_8px_rgba(0,0,0,0.1)] transition-all"
+                className="flex-1 h-12 bg-[#2E7D32] text-white rounded-2xl font-black text-xs shadow-[0_4px_0_#1B5E20,0_6px_10px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center border-b-2 border-white/10 relative overflow-hidden group active:translate-y-[2px] active:shadow-[0_1px_0_#1B5E20,0_2px_4px_rgba(0,0,0,0.1)] transition-all"
               >
                 <div className="flex items-center gap-2">
-                  <Leaf size={18} className="text-white" />
+                  <Leaf size={14} className="text-white" />
                   <span>طبيب زون</span>
-                  <Camera size={18} className="text-white" />
+                  <Camera size={14} className="text-white" />
                 </div>
-                <span className="text-[8px] mt-1 text-white/70">تشخيص أولي لأمراض النباتات</span>
+                <span className="text-[7px] mt-0.5 text-white/70">تشخيص أولي لأمراض النباتات</span>
               </motion.button>
             </div>
 
@@ -4562,7 +4115,7 @@ export default function App() {
           <main className={`flex-1 px-4 relative z-10 overflow-hidden ${currentLevel === 1 ? 'bg-[#F6F6F8]' : 'bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800'}`}>
             {/* Background pattern removed per user request */}
 
-            {loading ? (
+            {loading && data.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[50vh] relative z-20">
                 <motion.div
                   animate={{ 
@@ -4586,8 +4139,8 @@ export default function App() {
                   transition={{ duration: 1.5, repeat: Infinity }}
                   className="mt-8 text-center"
                 >
-                  <span className="text-red-800 font-black text-xl tracking-[0.2em] drop-shadow-sm">جاري التحديث الذكي...</span>
-                  <p className="text-gray-500 font-bold text-xs mt-2 italic">نحن نقوم بجلب أفضل الشتلات والمنتجات لك</p>
+                  {data.length === 0 && <span className="text-red-800 font-black text-xl tracking-[0.2em] drop-shadow-sm">جاري التحديث الذكي...</span>}
+                  {data.length === 0 && <p className="text-gray-500 font-bold text-xs mt-2 italic">نحن نقوم بجلب أفضل الشتلات والمنتجات لك</p>}
                   <motion.p 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -4623,42 +4176,65 @@ export default function App() {
             ) : (
               <AnimatePresence mode="wait">
                 <motion.div 
-                  key={currentLevel}
+                  key={currentLevel + (filters.join('-'))}
                   initial={{ x: 150, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -150, opacity: 0 }}
                   transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
                   className={`w-full max-w-full mx-auto pt-6 relative z-10 ${currentLevel === 1 ? 'grid grid-cols-3 gap-[4vw] px-[4vw]' : 'grid grid-cols-2 gap-x-[6vw] gap-y-12 px-[2vw]'}`}
                 >
-                  {currentItems.map((item: any, index) => (
-                    item.type === 'level1' || item.type === 'level2' || item.type === 'static' ? (
-                      <div key={item.id} className={currentLevel === 1 ? '' : 'col-span-1'}>
-                        <AnimatedButton 
-                          icon={getIcon(item.label, index)} 
-                          label={item.label} 
-                          onClick={() => {
-                            if (item.type === 'static' && item.id === 'garden-design') {
-                              setIsGardenSectionOpen(true);
-                            } else {
-                              handleItemClick(item.label);
-                            }
-                          }}
-                          level={currentLevel}
-                          isGlossy={currentLevel === 1 && item.label === 'نباتات الزينة'}
+                  {isTransitioning ? (
+                    <div className="flex flex-col items-center justify-center h-[30vh] w-full col-span-full py-10">
+                      <motion.div 
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="relative"
+                      >
+                        <div className="w-16 h-16 border-4 border-green-100 rounded-full" />
+                        <motion.div 
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="absolute inset-0 border-4 border-green-600 border-t-transparent rounded-full"
                         />
-                      </div>
-                    ) : (
-                      <div key={item.id} className="col-span-1">
-                        <ProductCard 
-                          name={item.label}
-                          price={item.price}
-                          image={item.image}
-                          onAddToCart={() => addToCart(item)}
-                          onImageClick={(img) => setZoomedImage(img)}
-                        />
-                      </div>
-                    )
-                  ))}
+                      </motion.div>
+                      <p className="mt-4 text-green-800 font-black text-xs animate-pulse">جاري فحص وتحديث البيانات...</p>
+                    </div>
+                  ) : currentItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[30vh] w-full col-span-full opacity-60">
+                      <ShoppingCart size={64} className="text-gray-300 mb-4" />
+                      <p className="font-bold text-gray-400">لا يوجد منتجات متاحة هنا حالياً</p>
+                    </div>
+                  ) : (
+                    currentItems.map((item: any, index) => (
+                      item.type === 'level1' || item.type === 'level2' || item.type === 'static' ? (
+                        <div key={item.id} className={currentLevel === 1 ? '' : 'col-span-1'}>
+                          <AnimatedButton 
+                            icon={getIcon(item.label, index)} 
+                            label={item.label} 
+                            onClick={() => {
+                              if (item.type === 'static' && item.id === 'garden-design') {
+                                setIsGardenSectionOpen(true);
+                              } else {
+                                handleItemClick(item.label);
+                              }
+                            }}
+                            level={currentLevel}
+                            isGlossy={currentLevel === 1 && item.label === 'نباتات الزينة'}
+                          />
+                        </div>
+                      ) : (
+                        <div key={item.id} className="col-span-1">
+                          <ProductCard 
+                            name={item.label}
+                            price={item.price}
+                            image={item.image}
+                            onAddToCart={() => addToCart(item)}
+                            onImageClick={(img) => setZoomedImage(img)}
+                          />
+                        </div>
+                      )
+                    ))
+                  )}
                 </motion.div>
               </AnimatePresence>
             )}
@@ -4666,28 +4242,28 @@ export default function App() {
 
           {/* قسم رابط الموقع الإلكتروني والجهة المطورة - يظهر فقط عند وجود بيانات */}
           {((websiteUrl && websiteUrl.startsWith('http')) || footerLine1 || footerLine2) && (
-            <div className="w-full px-6 py-6 flex flex-col items-center space-y-4 bg-gradient-to-t from-green-50/50 to-transparent">
+            <div className="w-full px-6 py-4 flex flex-col items-center space-y-2 bg-gradient-to-t from-green-50/50 to-transparent">
               
               {websiteUrl && websiteUrl.startsWith('http') && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => window.open(websiteUrl, '_blank')}
-                  className="w-full max-w-md h-24 p-6 bg-white border-2 border-green-50 rounded-[2.5rem] shadow-xl flex items-center gap-4 group transition-all"
+                  className="w-full max-w-md h-20 p-4 bg-white border-2 border-green-50 rounded-[2.5rem] shadow-xl flex items-center gap-4 group transition-all"
                 >
-                  <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-inner">
-                    <Globe size={28} className="text-green-700" />
+                  <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-inner">
+                    <Globe size={24} className="text-green-700" />
                   </div>
                   <div className="text-right flex-1">
-                    <p className="text-sm font-black text-green-800">تفضلوا بزيارة موقعنا الرسمي</p>
-                    <p className="text-[11px] text-gray-400 font-bold tracking-wider">
+                    <p className="text-xs font-black text-green-800">تفضلوا بزيارة موقعنا الرسمي</p>
+                    <p className="text-[10px] text-gray-400 font-bold tracking-wider">
                       {(() => {
                         try { return new URL(websiteUrl).hostname.replace('www.', ''); }
                         catch { return websiteUrl; }
                       })()}
                     </p>
                   </div>
-                  <ExternalLink size={18} className="text-gray-300 ml-2" />
+                  <ExternalLink size={16} className="text-gray-300 ml-2" />
                 </motion.button>
               )}
 

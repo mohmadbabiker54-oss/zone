@@ -17,23 +17,26 @@ export interface LocationResult {
 
 /**
  * Service module for handling native and web geolocation using Capacitor.
+ * Optimized for high accuracy (GPS) and Android integration.
  */
 export const LocationService = {
   /**
    * Main function to get the current position.
-   * Handles permissions, high accuracy fallbacks, and multi-layered retrieval.
+   * Enforces high accuracy (GPS) and filters out approximate results (>20m).
    */
-  async getCurrentLocation(): Promise<LocationResult> {
+  async getCurrentLocation(retryCount = 0): Promise<LocationResult> {
     const isNative = Capacitor.isNativePlatform();
     
-    // 1. Handle Permissions (Native only usually)
+    // 1. Handle Permissions with Interactive Rationale
     if (isNative) {
       try {
         const perms = await Geolocation.checkPermissions();
         if (perms.location !== 'granted') {
           const req = await Geolocation.requestPermissions();
           if (req.location !== 'granted') {
-            return { error: 'تم رفض إذن الوصول للموقع الجغرافي. يرجى تفعيله من إعدادات الهاتف.' };
+            return { 
+              error: '⚠️ نحتاج لإذن الـ GPS لضمان دقة الموقع. الموقع التقريبي قد يحتوي على خطأ يصل لـ 5 كيلومترات. يرجى تفعيله من إعدادات التطبيق.' 
+            };
           }
         }
       } catch (e) {
@@ -41,57 +44,47 @@ export const LocationService = {
       }
     }
 
-    // Attempt retrieval sequence
+    // Attempt retrieval with strict accuracy requirements
     try {
-      // Attempt 1: Capacitor with High Accuracy
-      try {
-        const pos = await Geolocation.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
-        });
-        return this.formatResult(pos);
-      } catch (e) {
-        console.warn('Capacitor High Accuracy failed, trying Low Accuracy...');
-        
-        // Attempt 2: Capacitor with Low Accuracy (faster, uses Cell/WiFi)
-        try {
-          const pos = await Geolocation.getCurrentPosition({
-            enableHighAccuracy: false,
-            timeout: 10000,
-            maximumAge: 30000 // Allow cached if recent
-          });
-          return this.formatResult(pos);
-        } catch (e2) {
-          console.warn('Capacitor Location failed entirely.');
-        }
+      // Priority: High Accuracy (Forces GPS on Android)
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true, 
+        timeout: 20000,
+        maximumAge: 0
+      });
+
+      const accuracy = pos.coords.accuracy;
+
+      // 2. Accuracy Filtering (Requirement: < 20 meters)
+      if (accuracy > 20 && retryCount < 3) {
+        console.log(`Low accuracy (${accuracy}m). Retrying update... Attempt ${retryCount + 1}`);
+        // Small delay before retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return this.getCurrentLocation(retryCount + 1);
       }
 
-      // Attempt 3: Web Native API (Fallback)
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        console.log('Switching to Web Geolocation API...');
+      return this.formatResult(pos);
+
+    } catch (e) {
+      console.warn('High Accuracy retrieval failed. Trying one last time...', e);
+      
+      // Fallback for Web/Browser environments
+      if (!isNative && typeof navigator !== 'undefined' && navigator.geolocation) {
         return new Promise((resolve) => {
           navigator.geolocation.getCurrentPosition(
             (pos) => resolve(this.formatResult(pos)),
-            (err) => {
-              console.error('Web Geolocation failed:', err);
-              // Final fallback to IP-based or manual
-              resolve({ error: 'عذراً، فشل تحديد الموقع تلقائياً. يرجى سحب الدبوس يدوياً على الخريطة.' });
-            },
+            (err) => resolve({ error: 'عذراً، فشل تحديد الموقع بدقة. تأكد من تفعيل الـ GPS في جهازك.' }),
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
           );
         });
       }
-
-    } catch (globalErr) {
-      console.error('Global Location Error:', globalErr);
+      
+      return { error: 'فشل تحديد الموقع عالي الدقة. يرجى التأكد من تفعيل الموقع (GPS) في وضع "الدقة العالية".' };
     }
-
-    return { error: 'فشل بروتوكول تحديد الموقع. يرجى وضع الدبوس يدوياً على الخريطة.' };
   },
 
   /**
-   * Helper to format different position objects into our standard LocationResult
+   * Helper to format different position objects and check accuracy threshold.
    */
   formatResult(pos: Position | GeolocationPosition): LocationResult {
     const accuracy = pos.coords.accuracy || 1000;
@@ -102,7 +95,7 @@ export const LocationService = {
         accuracy: accuracy
       },
       timestamp: pos.timestamp,
-      isAccurate: accuracy <= 50 // Our threshold for "Guaranteed Doorstep"
+      isAccurate: accuracy <= 20 // Enforced threshold
     };
   }
 };
