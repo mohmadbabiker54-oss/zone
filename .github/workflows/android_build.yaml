@@ -1,4 +1,4 @@
-name: Build Android (Zoon 2026 - Injection Protocol)
+name: Build Android (Zoon Sovereign Fix - Explicit SDK)
 
 on:
   workflow_dispatch:
@@ -28,38 +28,37 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Forced Injection of Android SDK 36
+      - name: Explicit Android Configuration Injection
         run: |
           cd android/app
-          # حذف أي محاولات سابقة لاستدعاء متغيرات خارجية قد تكون مفقودة
-          sed -i '/rootProject.ext.compileSdkVersion/d' build.gradle || true
-          sed -i '/rootProject.ext.targetSdkVersion/d' build.gradle || true
-          
-          # حقن القيم مباشرة في ملف build.gradle الخاص بالتطبيق لضمان القراءة
-          # سنضع القيم 36 بشكل صريح لإنهاء مشكلة "Property does not exist"
-          sed -i 's/compileSdk .*/compileSdk 36/g' build.gradle || true
-          sed -i 's/targetSdk .*/targetSdk 36/g' build.gradle || true
-          
-          # التأكد من وجود الإصدار الصحيح من Plugin أندرويد في ملف المشروع الرئيسي
-          cd ..
-          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle || true
-          
-          # إعادة ضبط الـ Wrapper لإصدار مستقر تماماً
+          # حذف السطور التي تحاول استدعاء متغيرات خارجية قد لا تكون موجودة في سياق الـ Runner
+          sed -i '/compileSdkVersion/d' build.gradle || true
+          sed -i '/targetSdkVersion/d' build.gradle || true
+          sed -i '/compileSdk/d' build.gradle || true
+          sed -i '/targetSdk/d' build.gradle || true
+
+          # حقن الإعدادات مباشرة في بداية كتلة أندرويد
+          # نستخدم SDK 36 كما طلبت التحديثات السابقة لضمان التوافق
+          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        targetSdk 36\n    }' build.gradle
+
+      - name: Sync Gradle Wrapper
+        run: |
+          cd android
+          # نستخدم إصدار 8.11.1 المستقر لدعم Plugin 8.9.1 المطلوب
           rm -rf gradle/wrapper/gradle-wrapper.jar
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Final Sovereign Build
+      - name: Execute Clean Sovereign Build
         run: |
           cd android
-          # تنظيف شامل وجبري
           ./gradlew clean assembleDebug \
             --no-daemon \
             --stacktrace
 
-      - name: Upload Zoon Artifacts
+      - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Sovereign-Final
+          name: Zoon-App-SDK36
           path: android/app/build/outputs/apk/debug/*.apk
