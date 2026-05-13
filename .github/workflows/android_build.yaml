@@ -1,4 +1,4 @@
-name: Build Android (Zoon Final Protocol - Comprehensive SDK Fix)
+name: Build Android (Zoon 2026 - Precise Patching)
 
 on:
   workflow_dispatch:
@@ -28,38 +28,38 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Force Patch All Android Metadata (SDK 36 & Gradle 8.11.1)
+      - name: Precise Android Metadata Patching
         run: |
           cd android
-          # تحديث شامل لكل ملفات المشروع لضمان الانتقال لـ SDK 36
-          find . -type f -name "*.gradle" -exec sed -i 's/compileSdk = [0-9]*/compileSdk = 36/g' {} +
-          find . -type f -name "*.gradle" -exec sed -i 's/targetSdk = [0-9]*/targetSdk = 36/g' {} +
-          find . -type f -name "*.gradle" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} +
-          find . -type f -name "*.gradle" -exec sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' {} +
+          # تنظيف الملفات المتضررة من المحاولة السابقة
+          git checkout variables.gradle || true
           
-          # تحديث الـ Plugin ليتوافق مع المعايير الحديثة
+          # استبدال ذكي: نبحث عن السطر الذي يحتوي على compileSdk ونعيد كتابته بالكامل
+          sed -i '/compileSdk/c\    compileSdk = 36' variables.gradle || true
+          sed -i '/targetSdk/c\    targetSdk = 36' variables.gradle || true
+          
+          # استبدال في ملفات build.gradle (النمط القديم والجديد)
+          find . -type f -name "build.gradle" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} +
+          find . -type f -name "build.gradle" -exec sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' {} +
+          
+          # تحديث الـ Plugin ليتوافق مع Gradle 9+
           find . -type f -name "build.gradle" -exec sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' {} +
           
-          # ترقية الـ Wrapper إلى الإصدار المطلوب 8.11.1
+          # ضبط الـ Wrapper لإصدار مستقر يدعم Java 21 و SDK 36
           rm -rf gradle/wrapper/gradle-wrapper.jar
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Build with Sovereign Force
+      - name: Build with Clean State
         run: |
           cd android
-          # تنظيف الكاشات القديمة التي سببت تعارض bcprov
-          rm -rf ~/.gradle/caches/jars-9
-          ./gradlew clean assembleDebug bundleDebug \
+          ./gradlew clean assembleDebug \
             --no-daemon \
-            --project-cache-dir="./.gradle_isolated_final" \
             --stacktrace
 
       - name: Upload Zoon Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Final-SDK36-V2026
-          path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/bundle/debug/*.aab
+          name: Zoon-Build-Fixed
+          path: android/app/build/outputs/apk/debug/*.apk
