@@ -1,4 +1,4 @@
-name: Build Android APK & AAB (Compatibility Path)
+name: Build Android APK & AAB (Final Stability)
 
 on:
   workflow_dispatch:
@@ -21,7 +21,6 @@ jobs:
         with:
           node-version: '20'
 
-      # تثبيت نسخة Gradle متوافقة (8.2) لتجنب أخطاء الإصدار 9
       - name: Setup Gradle 8.2
         uses: gradle/gradle-build-action@v2
         with:
@@ -30,20 +29,23 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Debug APK
+      - name: Build Android Files
         run: |
           cd android
-          gradle assembleDebug --warning-mode none
-
-      - name: Build Debug Bundle (AAB)
-        run: |
-          cd android
-          gradle bundleDebug --warning-mode none
+          gradle assembleDebug bundleDebug --warning-mode none
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Final-App
+          name: Zoon-Final-Output
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
+
+      # إضافة ملخص العملية (Job Summary) كما ورد في شرح Bash الذي أرفقته
+      - name: Generate Build Summary
+        run: |
+          echo "### 🚀 تم استخراج ملفات التطبيق بنجاح!" >> $GITHUB_STEP_SUMMARY
+          echo "تحقق من قسم **Artifacts** لتحميل الملفات التالية:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ **APK:** جاهز للتثبيت المباشر." >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ **AAB:** جاهز للرفع على المتجر." >> $GITHUB_STEP_SUMMARY
