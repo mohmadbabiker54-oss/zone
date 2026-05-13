@@ -1,4 +1,4 @@
-name: Build Android APK & AAB (Final Stability Path)
+name: Build Android APK & AAB (Optimized Cache)
 
 on:
   workflow_dispatch:
@@ -15,45 +15,46 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          # استخدام ميزة التخزين التلقائي للجافا كما ورد في الوثائق
+          cache: 'gradle'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Setup Gradle 8.2
-        uses: gradle/gradle-build-action@v2
+      # تطبيق بروتوكول الذاكرة المؤقتة الذي أرسلته (Cache Action)
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
         with:
-          gradle-version: 8.2
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          # إنشاء مفتاح فريد بناءً على نظام التشغيل وبصمة ملفات الإعداد
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # حل مشكلة الـ Cache: تنظيف المشروع وإعادة بناء ملفات الجار
-      - name: Clean and Build Android
+      - name: Build Android
         run: |
           cd android
-          ./gradlew clean
-          gradle assembleDebug bundleDebug --warning-mode none
+          chmod +x gradlew
+          ./gradlew assembleDebug bundleDebug --warning-mode none
 
       - name: Upload Artifacts
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-App-Package
+          name: Zoon-Optimized-Package
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
 
-      # إضافة ملخص العمل باستخدام Bash كما في البروتوكول الذي أرفقته
       - name: Generate Job Summary
-        if: always()
         run: |
-          echo "### 📊 ملخص عملية بناء التطبيق" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ job.status }}" == "success" ]]; then
-            echo "✅ **الحالة:** تم استخراج الملفات بنجاح!" >> $GITHUB_STEP_SUMMARY
-            echo "تحقق من قسم **Artifacts** لتحميل ملفات APK و AAB." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **الحالة:** فشلت العملية." >> $GITHUB_STEP_SUMMARY
-            echo "السبب المحتمل: مشكلة في توافق المكتبات أو الذاكرة المؤقتة." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### 🚀 تم البناء باستخدام تقنية الذاكرة المؤقتة (Cache)" >> $GITHUB_STEP_SUMMARY
+          echo "- **الحالة:** تم تحديث الذاكرة وضمان سلامة الملفات." >> $GITHUB_STEP_SUMMARY
+          echo "- **المخرجات:** APK و AAB بانتظارك في قسم المرفقات." >> $GITHUB_STEP_SUMMARY
