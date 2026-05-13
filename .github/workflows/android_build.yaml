@@ -1,4 +1,4 @@
-name: Build Android (Zoon - SDK Compatibility Fix)
+name: Build Android (Zoon - Java Access Fix)
 
 on:
   workflow_dispatch:
@@ -28,11 +28,15 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Final System Optimization & Repair
+      - name: Strategic Repair (XML, SDK & Java)
         run: |
           cd android
           
-          # 1. إصلاح ملف الأيقونة (التأكد من سلامة الـ XML)
+          # 1. إصلاح صلاحية الوصول في MainActivity.java
+          # تغيير protected void onStart() إلى public void onStart()
+          sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
+
+          # 2. إصلاح ملف الأيقونة XML
           mkdir -p app/src/main/res/drawable
           cat <<EOF > app/src/main/res/drawable/ic_launcher_background.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -47,26 +51,21 @@ jobs:
           </vector>
           EOF
 
-          # 2. تنظيف الموارد المكررة
+          # 3. تنظيف الموارد المكررة ورفع الـ SDK
           rm -f app/src/main/res/values/ic_launcher_background.xml || true
-          
-          # 3. تحديث الـ SDK ليتوافق مع مكتبات Cordova 13
-          # سنقوم برفع minSdkVersion إلى 24 و compile/target إلى 36
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
           sed -i '/targetSdk/d' build.gradle || true
-          
-          # إضافة الإعدادات الجديدة في بداية كتلة android
           sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
           
-          # 4. تحديث الـ Plugin والـ Wrapper
+          # 4. تحديث Gradle Wrapper و Plugin
           cd ..
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Execute Sovereign Build
+      - name: Execute Final Build
         run: |
           cd android
           ./gradlew clean assembleDebug \
@@ -77,5 +76,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Build-Final
+          name: Zoon-Final-App
           path: android/app/build/outputs/apk/debug/*.apk
