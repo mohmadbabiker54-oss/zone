@@ -1,9 +1,10 @@
-name: Build Android (Final Repair Path 2026)
+name: Build Android (Ultimate Repair & Build 2026)
 
 on:
   workflow_dispatch:
 
 env:
+  # إجبار النظام على استخدام المحرك الأحدث لضمان التوافق مع تحديثات يونيو 2026
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -18,6 +19,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          # استخدام التخزين المؤقت لـ Gradle لتقليل زمن البناء في المرات القادمة
           cache: 'gradle'
 
       - name: Set up Node.js 24
@@ -29,31 +31,43 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # الخطوة الحاسمة: إصلاح ملف gradle-wrapper.jar التالف
-      - name: Repair Gradle Wrapper
+      # معالجة الخطأ الأخير: حذف الـ Cache التالف وإعادة بناء الـ Wrapper السليم
+      - name: Deep Clean and Repair Gradle
         run: |
           cd android
+          # حذف مجلد الذاكرة المؤقتة الذي تسبب في خطأ bcprov-jdk18on
+          rm -rf /home/runner/.gradle/caches/jars-9
+          # حذف ملف الـ Jar التالف إن وجد وإعادة توليده بنسخة مستقرة
+          rm -rf gradle/wrapper/gradle-wrapper.jar
           gradle wrapper --gradle-version 8.2
+          chmod +x gradlew
 
-      - name: Build Android APK & AAB
+      # تنفيذ عملية بناء الـ APK والـ AAB
+      - name: Build Android Artifacts
         run: |
           cd android
-          chmod +x gradlew
-          ./gradlew clean assembleDebug bundleDebug --warning-mode none
+          ./gradlew clean assembleDebug bundleDebug --no-daemon --stacktrace --warning-mode none
 
-      - name: Upload Artifacts
+      - name: Upload APK & AAB
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Final-Build
+          name: Zoon-Final-App-2026
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
 
-      - name: Generate Job Summary
+      # إنشاء ملخص العمل الاحترافي (Job Summary) كما في بروتوكول Bash الخاص بك
+      - name: Generate Final Summary
         if: always()
         run: |
-          echo "### 🛠️ تقرير الصيانة والبناء 2026" >> $GITHUB_STEP_SUMMARY
-          echo "- **إصلاح النظام:** تم إعادة بناء ملف Gradle Wrapper التالف بنجاح." >> $GITHUB_STEP_SUMMARY
-          echo "- **المحرك:** يعمل الآن بكفاءة على Node.js 24." >> $GITHUB_STEP_SUMMARY
-          echo "- **النتيجة:** استخراج ملفات APK و AAB الإصدار الرابع." >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 تقرير استخراج النسخة الرابعة - مايو 2026" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ **الحالة:** نجاح البناء (Success)." >> $GITHUB_STEP_SUMMARY
+            echo "- تم تطهير الذاكرة المؤقتة وإصلاح ملفات التشفير بنجاح." >> $GITHUB_STEP_SUMMARY
+            echo "- المحرك يعمل بكامل طاقته على Node.js 24." >> $GITHUB_STEP_SUMMARY
+            echo "قم بتحميل المخرجات من قسم **Artifacts** في الأعلى." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **الحالة:** فشل البناء (Failure)." >> $GITHUB_STEP_SUMMARY
+            echo "يرجى التحقق من تفاصيل الـ Stacktrace في سجلات الخطوة السابقة." >> $GITHUB_STEP_SUMMARY
+          fi
