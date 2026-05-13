@@ -1,4 +1,4 @@
-name: Build Android (Zoon Sovereign Fix - Explicit SDK)
+name: Build Android (Zoon Final Fix - Plugin 8.9.1)
 
 on:
   workflow_dispatch:
@@ -28,37 +28,36 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Explicit Android Configuration Injection
-        run: |
-          cd android/app
-          # حذف السطور التي تحاول استدعاء متغيرات خارجية قد لا تكون موجودة في سياق الـ Runner
-          sed -i '/compileSdkVersion/d' build.gradle || true
-          sed -i '/targetSdkVersion/d' build.gradle || true
-          sed -i '/compileSdk/d' build.gradle || true
-          sed -i '/targetSdk/d' build.gradle || true
-
-          # حقن الإعدادات مباشرة في بداية كتلة أندرويد
-          # نستخدم SDK 36 كما طلبت التحديثات السابقة لضمان التوافق
-          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        targetSdk 36\n    }' build.gradle
-
-      - name: Sync Gradle Wrapper
+      - name: Forced Plugin & SDK Upgrade
         run: |
           cd android
-          # نستخدم إصدار 8.11.1 المستقر لدعم Plugin 8.9.1 المطلوب
+          # 1. تحديث إصدار Plugin أندرويد في ملف build.gradle الرئيسي
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
+          
+          # 2. حقن إعدادات الـ SDK مباشرة داخل ملف app/build.gradle
+          cd app
+          # إزالة الاستدعاءات القديمة لضمان عدم حدوث تعارض LHS
+          sed -i '/compileSdk/d' build.gradle || true
+          sed -i '/targetSdk/d' build.gradle || true
+          # حقن القيم الجديدة 36 المطلوبة لعام 2026
+          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        targetSdk 36\n    }' build.gradle
+          
+          # 3. تحديث الـ Gradle Wrapper ليتوافق مع Plugin 8.9.1
+          cd ..
           rm -rf gradle/wrapper/gradle-wrapper.jar
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Execute Clean Sovereign Build
+      - name: Execute Sovereign Build
         run: |
           cd android
           ./gradlew clean assembleDebug \
             --no-daemon \
             --stacktrace
 
-      - name: Upload Artifacts
+      - name: Upload Sovereign Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-App-SDK36
+          name: Zoon-Final-2026
           path: android/app/build/outputs/apk/debug/*.apk
