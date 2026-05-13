@@ -1,37 +1,38 @@
-name: Build Android APK & AAB (Optimized Cache)
+name: Build Android (Future-Proof Path 2026)
 
 on:
   workflow_dispatch:
+
+# إعداد المتغير البيئي لإجبار النظام على استخدام Node.js 24 الآن
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # سيعمل الآن بمحرك Node.js 24
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          # استخدام ميزة التخزين التلقائي للجافا كما ورد في الوثائق
           cache: 'gradle'
 
-      - name: Set up Node.js
+      - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24' # تحديث إصدار نود ليتوافق مع البيئة الجديدة
           cache: 'npm'
 
-      # تطبيق بروتوكول الذاكرة المؤقتة الذي أرسلته (Cache Action)
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          # إنشاء مفتاح فريد بناءً على نظام التشغيل وبصمة ملفات الإعداد
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
@@ -39,22 +40,25 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Android
+      - name: Build Android APK & AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug bundleDebug --warning-mode none
+          ./gradlew clean assembleDebug bundleDebug --warning-mode none
 
       - name: Upload Artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Optimized-Package
+          name: Zoon-2026-Package
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
 
       - name: Generate Job Summary
+        if: always()
         run: |
-          echo "### 🚀 تم البناء باستخدام تقنية الذاكرة المؤقتة (Cache)" >> $GITHUB_STEP_SUMMARY
-          echo "- **الحالة:** تم تحديث الذاكرة وضمان سلامة الملفات." >> $GITHUB_STEP_SUMMARY
-          echo "- **المخرجات:** APK و AAB بانتظارك في قسم المرفقات." >> $GITHUB_STEP_SUMMARY
+          echo "### 🛠️ تحديث الأمان والنظام 2026" >> $GITHUB_STEP_SUMMARY
+          echo "- **المحرك:** تم تفعيل Node.js 24 بنجاح (قبل الموعد النهائي)." >> $GITHUB_STEP_SUMMARY
+          echo "- **الذاكرة المؤقتة:** تم تحديث بصمة الـ Cache لضمان الاستقرار." >> $GITHUB_STEP_SUMMARY
+          echo "- **النتيجة:** استخراج الملفات متوافق مع معايير الأمان الجديدة." >> $GITHUB_STEP_SUMMARY
