@@ -1,4 +1,4 @@
-name: Build Android (Zoon Final Fix - XML Repair)
+name: Build Android (Zoon - SDK Compatibility Fix)
 
 on:
   workflow_dispatch:
@@ -28,12 +28,11 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Repair Resources & System Upgrade
+      - name: Final System Optimization & Repair
         run: |
           cd android
           
-          # 1. إصلاح ملف XML التالف (إعادة كتابة الملف بمحتوى سليم)
-          # سنقوم بإنشاء خلفية بسيطة بلون واحد لضمان قبول النظام للملف
+          # 1. إصلاح ملف الأيقونة (التأكد من سلامة الـ XML)
           mkdir -p app/src/main/res/drawable
           cat <<EOF > app/src/main/res/drawable/ic_launcher_background.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -48,20 +47,22 @@ jobs:
           </vector>
           EOF
 
-          # 2. حذف النسخة المكررة في مجلد values لضمان عدم حدوث تعارض
+          # 2. تنظيف الموارد المكررة
           rm -f app/src/main/res/values/ic_launcher_background.xml || true
           
-          # 3. تحديث إصدار Plugin أندرويد 8.9.1
-          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
-          
-          # 4. ضبط الـ SDK على الإصدار 36
+          # 3. تحديث الـ SDK ليتوافق مع مكتبات Cordova 13
+          # سنقوم برفع minSdkVersion إلى 24 و compile/target إلى 36
           cd app
+          sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
           sed -i '/targetSdk/d' build.gradle || true
-          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        targetSdk 36\n    }' build.gradle
           
-          # 5. تحديث Gradle Wrapper
+          # إضافة الإعدادات الجديدة في بداية كتلة android
+          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
+          
+          # 4. تحديث الـ Plugin والـ Wrapper
           cd ..
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
@@ -76,5 +77,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Build-Fixed-XML
+          name: Zoon-Build-Final
           path: android/app/build/outputs/apk/debug/*.apk
