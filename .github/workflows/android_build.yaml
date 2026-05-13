@@ -1,4 +1,4 @@
-name: Build Android (Zoon 2026 - Precise Patching)
+name: Build Android (Zoon 2026 - Injection Protocol)
 
 on:
   workflow_dispatch:
@@ -28,31 +28,31 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Precise Android Metadata Patching
+      - name: Forced Injection of Android SDK 36
         run: |
-          cd android
-          # تنظيف الملفات المتضررة من المحاولة السابقة
-          git checkout variables.gradle || true
+          cd android/app
+          # حذف أي محاولات سابقة لاستدعاء متغيرات خارجية قد تكون مفقودة
+          sed -i '/rootProject.ext.compileSdkVersion/d' build.gradle || true
+          sed -i '/rootProject.ext.targetSdkVersion/d' build.gradle || true
           
-          # استبدال ذكي: نبحث عن السطر الذي يحتوي على compileSdk ونعيد كتابته بالكامل
-          sed -i '/compileSdk/c\    compileSdk = 36' variables.gradle || true
-          sed -i '/targetSdk/c\    targetSdk = 36' variables.gradle || true
+          # حقن القيم مباشرة في ملف build.gradle الخاص بالتطبيق لضمان القراءة
+          # سنضع القيم 36 بشكل صريح لإنهاء مشكلة "Property does not exist"
+          sed -i 's/compileSdk .*/compileSdk 36/g' build.gradle || true
+          sed -i 's/targetSdk .*/targetSdk 36/g' build.gradle || true
           
-          # استبدال في ملفات build.gradle (النمط القديم والجديد)
-          find . -type f -name "build.gradle" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} +
-          find . -type f -name "build.gradle" -exec sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' {} +
+          # التأكد من وجود الإصدار الصحيح من Plugin أندرويد في ملف المشروع الرئيسي
+          cd ..
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle || true
           
-          # تحديث الـ Plugin ليتوافق مع Gradle 9+
-          find . -type f -name "build.gradle" -exec sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' {} +
-          
-          # ضبط الـ Wrapper لإصدار مستقر يدعم Java 21 و SDK 36
+          # إعادة ضبط الـ Wrapper لإصدار مستقر تماماً
           rm -rf gradle/wrapper/gradle-wrapper.jar
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Build with Clean State
+      - name: Final Sovereign Build
         run: |
           cd android
+          # تنظيف شامل وجبري
           ./gradlew clean assembleDebug \
             --no-daemon \
             --stacktrace
@@ -61,5 +61,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Build-Fixed
+          name: Zoon-Sovereign-Final
           path: android/app/build/outputs/apk/debug/*.apk
