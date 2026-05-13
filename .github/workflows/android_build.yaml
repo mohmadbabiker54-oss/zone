@@ -1,4 +1,4 @@
-name: Build Android (Final Sovereign Protocol - Gradle 8.11.1)
+name: Build Android (Zoon Final Protocol - Comprehensive SDK Fix)
 
 on:
   workflow_dispatch:
@@ -28,37 +28,38 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Auto-Patch to Modern Standards (SDK 36 & Gradle 8.11.1)
+      - name: Force Patch All Android Metadata (SDK 36 & Gradle 8.11.1)
         run: |
           cd android
-          # 1. تحديث الـ SDK برمجياً لمواكبة متطلبات 2026
-          sed -i 's/compileSdk = [0-9]*/compileSdk = 36/g' variables.gradle || true
-          sed -i 's/targetSdk = [0-9]*/targetSdk = 36/g' variables.gradle || true
+          # تحديث شامل لكل ملفات المشروع لضمان الانتقال لـ SDK 36
+          find . -type f -name "*.gradle" -exec sed -i 's/compileSdk = [0-9]*/compileSdk = 36/g' {} +
+          find . -type f -name "*.gradle" -exec sed -i 's/targetSdk = [0-9]*/targetSdk = 36/g' {} +
+          find . -type f -name "*.gradle" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} +
+          find . -type f -name "*.gradle" -exec sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' {} +
           
-          # 2. تحديث Plugin أندرويد ليتوافق مع المكتبات المطلوبة
-          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
+          # تحديث الـ Plugin ليتوافق مع المعايير الحديثة
+          find . -type f -name "build.gradle" -exec sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' {} +
           
-          # 3. تحديث الـ Gradle Wrapper إلى الإصدار المطلوب 8.11.1
+          # ترقية الـ Wrapper إلى الإصدار المطلوب 8.11.1
           rm -rf gradle/wrapper/gradle-wrapper.jar
-          # تحميل النسخة المحددة المطلوبة في السجل (8.11.1)
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Build with Maximum Compatibility
+      - name: Build with Sovereign Force
         run: |
           cd android
-          # تنظيف شامل قبل البناء النهائي
+          # تنظيف الكاشات القديمة التي سببت تعارض bcprov
           rm -rf ~/.gradle/caches/jars-9
           ./gradlew clean assembleDebug bundleDebug \
             --no-daemon \
             --project-cache-dir="./.gradle_isolated_final" \
             --stacktrace
 
-      - name: Upload Sovereign Artifacts
+      - name: Upload Zoon Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Complete-2026
+          name: Zoon-Final-SDK36-V2026
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
