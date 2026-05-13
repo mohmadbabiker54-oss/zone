@@ -1,4 +1,4 @@
-name: Build Android APK & AAB (Final Stability)
+name: Build Android APK & AAB (Final Stability Path)
 
 on:
   workflow_dispatch:
@@ -29,23 +29,31 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Android Files
+      # حل مشكلة الـ Cache: تنظيف المشروع وإعادة بناء ملفات الجار
+      - name: Clean and Build Android
         run: |
           cd android
+          ./gradlew clean
           gradle assembleDebug bundleDebug --warning-mode none
 
       - name: Upload Artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Final-Output
+          name: Zoon-App-Package
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
 
-      # إضافة ملخص العملية (Job Summary) كما ورد في شرح Bash الذي أرفقته
-      - name: Generate Build Summary
+      # إضافة ملخص العمل باستخدام Bash كما في البروتوكول الذي أرفقته
+      - name: Generate Job Summary
+        if: always()
         run: |
-          echo "### 🚀 تم استخراج ملفات التطبيق بنجاح!" >> $GITHUB_STEP_SUMMARY
-          echo "تحقق من قسم **Artifacts** لتحميل الملفات التالية:" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ **APK:** جاهز للتثبيت المباشر." >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ **AAB:** جاهز للرفع على المتجر." >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 ملخص عملية بناء التطبيق" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ **الحالة:** تم استخراج الملفات بنجاح!" >> $GITHUB_STEP_SUMMARY
+            echo "تحقق من قسم **Artifacts** لتحميل ملفات APK و AAB." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **الحالة:** فشلت العملية." >> $GITHUB_STEP_SUMMARY
+            echo "السبب المحتمل: مشكلة في توافق المكتبات أو الذاكرة المؤقتة." >> $GITHUB_STEP_SUMMARY
+          fi
