@@ -1,4 +1,4 @@
-name: Build Android (Zoon Final Fix - Plugin 8.9.1)
+name: Build Android (Zoon Final Fix - Resolved Duplicates)
 
 on:
   workflow_dispatch:
@@ -28,29 +28,32 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Forced Plugin & SDK Upgrade
+      - name: Clean Duplicates & System Upgrade
         run: |
           cd android
-          # 1. تحديث إصدار Plugin أندرويد في ملف build.gradle الرئيسي
+          
+          # 1. حل مشكلة Duplicate resources (حذف الملف المكرر)
+          # نقوم بحذفه من مسار values ليبقى التعريف الموجود في colors.xml فقط
+          rm -f app/src/main/res/values/ic_launcher_background.xml || true
+          
+          # 2. تحديث إصدار Plugin أندرويد ليتوافق مع مكتبات 2026
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           
-          # 2. حقن إعدادات الـ SDK مباشرة داخل ملف app/build.gradle
+          # 3. تحديث الـ SDK إلى الإصدار 36 المطلوب
           cd app
-          # إزالة الاستدعاءات القديمة لضمان عدم حدوث تعارض LHS
           sed -i '/compileSdk/d' build.gradle || true
           sed -i '/targetSdk/d' build.gradle || true
-          # حقن القيم الجديدة 36 المطلوبة لعام 2026
           sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        targetSdk 36\n    }' build.gradle
           
-          # 3. تحديث الـ Gradle Wrapper ليتوافق مع Plugin 8.9.1
+          # 4. تحديث Gradle Wrapper ليتوافق مع التعديلات الجديدة
           cd ..
-          rm -rf gradle/wrapper/gradle-wrapper.jar
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
       - name: Execute Sovereign Build
         run: |
           cd android
+          # تنظيف كامل قبل البناء لضمان عدم وجود مخلفات من محاولات فاشلة
           ./gradlew clean assembleDebug \
             --no-daemon \
             --stacktrace
@@ -59,5 +62,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Final-2026
+          name: Zoon-Build-Success
           path: android/app/build/outputs/apk/debug/*.apk
