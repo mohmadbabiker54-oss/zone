@@ -1,4 +1,4 @@
-name: Build Android (Zero-Failure Protocol 2026)
+name: Build Android (Isolated Sovereign Protocol 2026)
 
 on:
   workflow_dispatch:
@@ -23,44 +23,44 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # المرحلة الحاسمة: تطهير شامل وإعادة بناء بيئة Gradle
-      - name: Force Gradle Environment Reset
+      - name: Prepare Clean Environment
         run: |
           cd android
-          # مسح كافة الملفات المؤقتة والمكتبات لضمان تحميل نسخة سليمة من bcprov
+          # تنظيف جذري لبيئة Capacitor و Gradle
           rm -rf ~/.gradle/caches/
-          rm -rf ~/.gradle/wrapper/
           rm -rf gradle/wrapper/gradle-wrapper.jar
-          # إعادة توليد الـ Wrapper بإصدار مستقر تماماً
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
 
-      - name: Execute Clean Production Build
+      - name: Build with Isolated Cache
         run: |
           cd android
-          # استخدام --no-daemon لضمان عدم بقاء عمليات عالقة تسبب فشل الملفات
-          ./gradlew clean assembleDebug bundleDebug --no-daemon --stacktrace
+          # استخدام مجلد مؤقت مخصص (Isolated Dir) لتجنب فشل إنشاء Jar
+          ./gradlew clean assembleDebug bundleDebug \
+            --no-daemon \
+            --project-cache-dir="./.gradle_isolated" \
+            --stacktrace \
+            --warning-mode none
 
-      - name: Upload Secured Artifacts
+      - name: Upload Sovereign Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-App-Final-2026
+          name: Zoon-V4-2026
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
 
-      - name: Final System Report
+      - name: Sovereign Final Report
         if: always()
         run: |
           echo "### 🛠️ تقرير الصيانة السيادية 2026" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ job.status }}" == "success" ]]; then
-            echo "✅ **النتيجة:** تم تجاوز خطأ التشفير واستخراج التطبيق بنجاح." >> $GITHUB_STEP_SUMMARY
+            echo "✅ **النتيجة:** تم تفعيل العزل التقني واستخراج النسخة بنجاح." >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **النتيجة:** تعارض في المكتبات. جاري فحص ملف capacitor-app." >> $GITHUB_STEP_SUMMARY
+            echo "❌ **النتيجة:** تعارض مستمر في ':capacitor-app'. يتطلب فحص يدوي لملفات التكوين." >> $GITHUB_STEP_SUMMARY
           fi
