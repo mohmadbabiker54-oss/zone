@@ -1,10 +1,9 @@
-name: Build Android (Sovereign Isolated Protocol 21)
+name: Build Android (Zoon Sovereign Protocol 2026 - SDK 36)
 
 on:
   workflow_dispatch:
 
 env:
-  # فرض استخدام أحدث بيئة عمل لضمان التوافق
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -14,12 +13,11 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21 (Fix for Major Version 65)
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
-          # حذفنا الكاش القديم لضمان عدم سحب ملفات تالفة
           cache: 'gradle'
 
       - name: Set up Node.js 24
@@ -30,37 +28,35 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Clean Corrupted Artifacts & Prepare Wrapper
+      - name: Auto-Patch Android Configurations (SDK 36 & AGP 8.9.1)
         run: |
           cd android
-          # تنظيف جذري للمجلدات التي تسبب الخطأ في سجلاتك
+          # تحديث compileSdk و targetSdk إلى 36 برمجياً
+          sed -i 's/compileSdk = [0-9]*/compileSdk = 36/g' variables.gradle || true
+          sed -i 's/targetSdk = [0-9]*/targetSdk = 36/g' variables.gradle || true
+          
+          # تحديث إصدار Android Gradle Plugin ليناسب متطلبات المكتبات الحديثة
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
+          
+          # تنظيف الذاكرة التالفة وإعادة ضبط الـ Wrapper
           rm -rf ~/.gradle/caches/jars-9
-          rm -rf ~/.gradle/caches/modules-2
-          # إعادة ضبط الـ Wrapper ليتوافق مع Java 21
           rm -rf gradle/wrapper/gradle-wrapper.jar
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
 
-      - name: Build with Isolated Sovereign Cache
+      - name: Build with Modern Android Protocol
         run: |
           cd android
-          # استخدام بروتوكول العزل المخصص لمشروع Zoon
           ./gradlew clean assembleDebug bundleDebug \
             --no-daemon \
-            --project-cache-dir="./.gradle_isolated_2026" \
+            --project-cache-dir="./.gradle_isolated_v36" \
             --stacktrace
 
       - name: Upload Sovereign Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Sovereign-V21
+          name: Zoon-Final-SDK36
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/debug/*.aab
-
-      - name: Final Technical Report
-        if: always()
-        run: |
-          echo "### 🛠️ تقرير البناء السيادي - تحديث Java 21" >> $GITHUB_STEP_SUMMARY
-          echo "تم تحديث البيئة البرمجية لتتوافق مع مكتبات التشفير الحديثة (Version 65)." >> $GITHUB_STEP_SUMMARY
