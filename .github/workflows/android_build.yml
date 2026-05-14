@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Final XML Purge)
+name: Build Android (Zoon - Final AAB & APK Extraction)
 
 on:
   workflow_dispatch:
@@ -32,23 +32,22 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Absolute Resource Purge
+      - name: Resource Integrity & XML Purge
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
           cd android/app/src/main/res
           
-          # 1. حذف شامل لملف ic_launcher_background من كل مكان لمنع التعارض
+          # مسح شامل لأي تعارضات سابقة
           find . -name "ic_launcher_background.xml" -delete
           
-          # 2. إنشاء ملف الألوان من جديد وبدقة متناهية (Single Source of Truth)
+          # بناء ملفات الموارد من الصفر لضمان السلامة البرمجية
           mkdir -p values
           printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#FFFFFF</color>\n    <color name="colorPrimary">#008577</color>\n    <color name="colorPrimaryDark">#00574B</color>\n    <color name="colorAccent">#D81B60</color>\n</resources>' > values/colors.xml
 
-          # 3. إنشاء ملف الخلفية كـ Vector في مجلد drawable واحد فقط وبصيغة نظيفة
           mkdir -p drawable
           printf '<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n    <path android:fillColor="#FFFFFF" android:pathData="M0,0h108v108h-108z" />\n</vector>' > drawable/ic_launcher_background.xml
 
-          # 4. تطهير الصور لضمان عبور AAPT2
+          # تطهير الصور (AAPT2)
           find . -name "ic_launcher*.png" -exec convert -size 192x192 xc:white {} \;
           find . -name "splash.png" -exec convert -size 512x512 xc:white {} \;
 
@@ -57,11 +56,8 @@ jobs:
           cd android
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          
-          # إصلاح MainActivity Java
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # ضبط مستويات الـ SDK المطلوبة
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
@@ -72,15 +68,17 @@ jobs:
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Generate Sovereign AAB
+      - name: Generate Sovereign AAB & APK
         run: |
           cd android
-          # تنظيف الذاكرة المؤقتة بعمق قبل البناء
-          ./gradlew clean bundleRelease --no-daemon
+          # تنظيف الذاكرة المؤقتة وبناء الملفين معاً
+          ./gradlew clean bundleRelease assembleRelease --no-daemon
 
-      - name: Upload Sovereign AAB
+      - name: Upload Build Artifacts (AAB & APK)
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Production-Bundle
-          path: android/app/build/outputs/bundle/release/*.aab
+          name: Zoon-Final-Builds
+          path: |
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/apk/release/*.apk
