@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Duplicate Resource Fix)
+name: Build Android (Zoon - XML Structure Fix)
 
 on:
   workflow_dispatch:
@@ -32,20 +32,39 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Resource De-duplication & Purge
+      - name: Resource Structural Repair
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
           cd android/app/src/main/res
           
-          # حذف ملف الألوان المكرر الذي يسبب التعارض مع ic_launcher_background.xml
-          rm -f values/ic_launcher_background.xml || true
-          
-          # التأكد من وجود تعريف واحد فقط في colors.xml لتجنب الفشل
-          if [ -f values/colors.xml ]; then
-            echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#FFFFFF</color></resources>' > values/colors.xml
-          fi
+          # 1. إعادة إنشاء ملف الألوان بصيغة XML سليمة تماماً
+          mkdir -p values
+          cat <<EOF > values/colors.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="ic_launcher_background">#FFFFFF</color>
+              <color name="colorPrimary">#008577</color>
+              <color name="colorPrimaryDark">#00574B</color>
+              <color name="colorAccent">#D81B60</color>
+          </resources>
+          EOF
 
-          # تطهير الصور لضمان عدم وجود ملفات تالفة (AAPT2)
+          # 2. حذف وإعادة إنشاء ic_launcher_background.xml بصيغة Vector سليمة
+          mkdir -p drawable
+          cat <<EOF > drawable/ic_launcher_background.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path
+                  android:fillColor="#FFFFFF"
+                  android:pathData="M0,0h108v108h-108z" />
+          </vector>
+          EOF
+
+          # 3. تطهير كافة صور الأيقونات والـ Splash لضمان قبول AAPT2
           find . -name "ic_launcher*.png" -exec convert -size 192x192 xc:white {} \;
           find . -name "splash.png" -exec convert -size 512x512 xc:white {} \;
 
