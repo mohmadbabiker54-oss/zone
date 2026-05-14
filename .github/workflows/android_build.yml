@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Professional Icon Repair & AAB)
+name: Build Android (Zoon - Precise PNG Repair & AAB)
 
 on:
   workflow_dispatch:
@@ -25,26 +25,24 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install Dependencies & ImageMagick
-        run: |
-          npm install --legacy-peer-deps
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
+      - name: Install pngcrush
+        run: sudo apt-get update && sudo apt-get install -y pngcrush
 
-      - name: Deep Repair of Sovereign Icons
+      - name: Sovereign Icon Integrity Repair
         run: |
           cd android
-          # 1. إصلاح ملفات PNG تقنياً (إزالة الـ Metadata غير المتوافقة) مع الحفاظ على المحتوى البصري
-          # هذا الأمر يحل مشكلة "file failed to compile" للأبد
-          find app/src/main/res -name "*.png" -exec convert {} -strip {} \;
           
-          # 2. تنظيف ملف local.properties
+          # 1. إصلاح ملفات الـ PNG المتضررة تقنياً باستخدام pngcrush
+          # هذه الأداة تعيد بناء هيكل الملف ليصبح معيارياً 100% بالنسبة لأندرويد
+          find app/src/main/res -name "*.png" -exec pngcrush -ow -rem allb -reduce {} \;
+
+          # 2. تهيئة ملف الخصائص وحل مشكلة المسارات
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-          # 3. إصلاح MainActivity.java
+          # 3. إصلاح Java Access (الضروري برمجياً)
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # 4. تحديث SDK و Gradle
+          # 4. تحديث إعدادات البناء لتتوافق مع Google Play
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
@@ -52,16 +50,15 @@ jobs:
           sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
           
           cd ..
-          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Generate Production AAB with Fixed Original Icons
+      - name: Generate Sovereign AAB
         run: |
           cd android
           ./gradlew clean bundleRelease --no-daemon
 
-      - name: Upload Sovereign AAB Artifact
+      - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
