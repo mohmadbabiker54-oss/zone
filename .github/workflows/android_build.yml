@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Force Sovereign Icons & AAB)
+name: Build Android (Zoon - Professional Icon Repair & AAB)
 
 on:
   workflow_dispatch:
@@ -25,44 +25,41 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install Dependencies
-        run: npm install --legacy-peer-deps
+      - name: Install Dependencies & ImageMagick
+        run: |
+          npm install --legacy-peer-deps
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
 
-      - name: Strategic Repair & Icon Preservation
+      - name: Deep Repair of Sovereign Icons
         run: |
           cd android
+          # 1. إصلاح ملفات PNG تقنياً (إزالة الـ Metadata غير المتوافقة) مع الحفاظ على المحتوى البصري
+          # هذا الأمر يحل مشكلة "file failed to compile" للأبد
+          find app/src/main/res -name "*.png" -exec convert {} -strip {} \;
           
-          # 1. تنظيف عميق للموارد التالفة لضمان عدم وجود ملفات "مشبوهة" من عمليات التغليف السابقة
-          ./gradlew clean || true
-          
-          # 2. إصلاح مشكلة ملف local.properties الذي ظهر في سجل الخطأ
+          # 2. تنظيف ملف local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-          # 3. معالجة الصور لضمان قبول AAPT لها دون حذفها
-          # هذا الأمر يقوم بتحديث تاريخ الملفات وإعادة تهيئتها للنظام
-          find app/src/main/res -name "*.png" -exec touch {} +
-
-          # 4. إصلاح صلاحية الوصول في MainActivity.java (الضروري برمجياً)
+          # 3. إصلاح MainActivity.java
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # 5. تحديث إعدادات SDK لتتوافق مع متطلبات المتجر (API 36)
+          # 4. تحديث SDK و Gradle
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
           sed -i '/targetSdk/d' build.gradle || true
           sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
           
-          # 6. تهيئة Gradle Wrapper
           cd ..
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
-      - name: Generate Production AAB with Original Icons
+      - name: Generate Production AAB with Fixed Original Icons
         run: |
           cd android
-          # تنفيذ البناء مع تجاهل أخطاء الـ PNG غير الحرجة إذا وجدت وتثبيت الأيقونات الأصلية
-          ./gradlew bundleRelease --no-daemon -Pandroid.shared.disableResourceValidation=true
+          ./gradlew clean bundleRelease --no-daemon
 
       - name: Upload Sovereign AAB Artifact
         if: success()
