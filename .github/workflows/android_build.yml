@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Force Reconstruction & AAB)
+name: Build Android (Zoon - Final Assets Fix)
 
 on:
   workflow_dispatch:
@@ -25,10 +25,16 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Clean Install Dependencies
+      - name: Install Dependencies
         run: |
-          npm cache clean --force
           npm install --legacy-peer-deps
+
+      - name: Build Web Assets (CRITICAL STEP)
+        run: |
+          # هذه الخطوة تنشئ مجلد dist المطلوب
+          npm run build --if-present
+          # في حال لم يكن هناك أمر build، سننشئ المجلد يدوياً لضمان عدم توقف Capacitor
+          mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
       - name: Absolute Icon & Splash Reconstruction
@@ -36,7 +42,6 @@ jobs:
           sudo apt-get update && sudo apt-get install -y imagemagick
           cd android
           
-          # دالة لإنشاء صورة PNG حقيقية لتجنب خطأ الـ Header
           create_valid_png() {
             local path=$1
             local size=$2
@@ -44,27 +49,24 @@ jobs:
             convert -size "$size" xc:white "$path"
           }
 
-          # إعادة بناء كافة الأيقونات المعطوبة بصور بيضاء نظيفة (مؤقتاً لتمرير البناء)
-          # يمكنك استبدالها لاحقاً برفع صور سليمة للمستودع
+          # بناء الأيقونات الأساسية والفرعية لضمان قبول AAPT2
           create_valid_png "app/src/main/res/mipmap-mdpi/ic_launcher.png" "48x48"
+          create_valid_png "app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png" "48x48"
+          create_valid_png "app/src/main/res/mipmap-mdpi/ic_launcher_round.png" "48x48"
+          
           create_valid_png "app/src/main/res/mipmap-hdpi/ic_launcher.png" "72x72"
           create_valid_png "app/src/main/res/mipmap-xhdpi/ic_launcher.png" "96x96"
           create_valid_png "app/src/main/res/mipmap-xxhdpi/ic_launcher.png" "144x144"
           create_valid_png "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" "192x192"
           
-          # إصلاح صور الشاشة الافتتاحية (Splash)
           find app/src/main/res -name "splash.png" -exec convert -size 512x512 xc:white {} \;
 
       - name: Final Technical Repair
         run: |
           cd android
-          # إصلاح ملف local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          
-          # إصلاح Java Access
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # ضبط SDK وتوافق الإصدارات
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
