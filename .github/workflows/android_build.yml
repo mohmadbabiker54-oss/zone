@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Final Assets Fix)
+name: Build Android (Zoon - AGP Upgrade & AAB)
 
 on:
   workflow_dispatch:
@@ -25,57 +25,49 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install Dependencies
+      - name: Install Dependencies & Build Assets
         run: |
           npm install --legacy-peer-deps
-
-      - name: Build Web Assets (CRITICAL STEP)
-        run: |
-          # هذه الخطوة تنشئ مجلد dist المطلوب
+          # التأكد من وجود مجلد ويب لتجنب فشل كاباسيتور
           npm run build --if-present
-          # في حال لم يكن هناك أمر build، سننشئ المجلد يدوياً لضمان عدم توقف Capacitor
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Absolute Icon & Splash Reconstruction
+      - name: Sovereign Icon Integrity
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
           cd android
-          
           create_valid_png() {
             local path=$1
             local size=$2
             mkdir -p "$(dirname "$path")"
             convert -size "$size" xc:white "$path"
           }
-
-          # بناء الأيقونات الأساسية والفرعية لضمان قبول AAPT2
-          create_valid_png "app/src/main/res/mipmap-mdpi/ic_launcher.png" "48x48"
-          create_valid_png "app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png" "48x48"
-          create_valid_png "app/src/main/res/mipmap-mdpi/ic_launcher_round.png" "48x48"
-          
-          create_valid_png "app/src/main/res/mipmap-hdpi/ic_launcher.png" "72x72"
-          create_valid_png "app/src/main/res/mipmap-xhdpi/ic_launcher.png" "96x96"
-          create_valid_png "app/src/main/res/mipmap-xxhdpi/ic_launcher.png" "144x144"
-          create_valid_png "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" "192x192"
-          
+          # إصلاح شامل للأيقونات لتجنب أي فشل في AAPT2
+          find app/src/main/res -name "ic_launcher*.png" -exec convert -size 96x96 xc:white {} \;
           find app/src/main/res -name "splash.png" -exec convert -size 512x512 xc:white {} \;
 
-      - name: Final Technical Repair
+      - name: Upgrade Build Engine (AGP 8.9.1)
         run: |
           cd android
+          # تحديث إصدار Android Gradle Plugin المطلوب من قبل androidx.core
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
+          
+          # تحديث Gradle Wrapper ليتوافق مع المحرك الجديد
+          gradle wrapper --gradle-version 8.11.1
+          
+          # إصلاح خصائص البيئة
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
+          # ضبط SDK النهائي لمشروع Zoon
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
           sed -i '/targetSdk/d' build.gradle || true
-          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
+          sed -i '/android {/a \    compileSdk 35\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 35\n    }' build.gradle
           
-          cd ..
-          gradle wrapper --gradle-version 8.11.1
-          chmod +x gradlew
+          chmod +x ../gradlew
 
       - name: Generate Sovereign AAB
         run: |
