@@ -1,4 +1,4 @@
-name: Build Android (Zoon - SDK 36 Final Alignment)
+name: Build Android (Zoon - Final Resource Purge & AAB)
 
 on:
   workflow_dispatch:
@@ -32,25 +32,34 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Sovereign Icon Integrity
+      - name: Ultimate Resource Cleansing (AAPT2 Fix)
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
-          cd android
-          # إصلاح شامل للأيقونات لتجنب أي فشل في محرك الرسوميات
-          find app/src/main/res -name "ic_launcher*.png" -exec convert -size 96x96 xc:white {} \;
-          find app/src/main/res -name "splash.png" -exec convert -size 512x512 xc:white {} \;
+          cd android/app/src/main/res
+          
+          # دالة لإنشاء صور PNG متوافقة مع AAPT2
+          force_fix_png() {
+            find . -name "$1" -exec convert -size "$2" xc:white {} \;
+          }
 
-      - name: Ultimate SDK 36 Alignment
+          # تطهير كافة ملفات الأيقونات (Launcher Icons)
+          force_fix_png "ic_launcher*.png" "192x192"
+          
+          # تطهير كافة ملفات الشاشة الافتتاحية (Splash Screens) في كل الأوضاع (الطولي والعرضي)
+          force_fix_png "splash.png" "512x512"
+
+      - name: Ultimate SDK 36 & AGP Alignment
         run: |
           cd android
-          # تحديث محرك البناء AGP ليتوافق مع المتطلبات الجديدة
+          # تحديث محرك البناء ليناسب مكتبات androidx الحديثة
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           
-          # ضبط ملفات الخصائص
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          
+          # تعديل الصلاحيات لـ MainActivity لضمان التوافق
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # التعديل الجوهري: رفع compileSdk و targetSdk إلى 36
+          # ضبط SDK 36 المطلوب برمجياً لـ Zoon
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
