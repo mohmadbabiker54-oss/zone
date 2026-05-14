@@ -1009,11 +1009,14 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
   const [isGenerating, setIsGenerating] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationResult | null>(null);
+  const [initialGpsPos, setInitialGpsPos] = useState<[number, number] | null>(null);
   const [markerPos, setMarkerPos] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState(18);
-  const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard'); 
+  const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('satellite'); 
   const [accuracyWarning, setAccuracyWarning] = useState<string | null>("جاري جلب موقعك بدقة GPS عالية... يرجى الانتظار.");
   const [gpsLoading, setGpsLoading] = useState(true);
+  const [showDistancePrompt, setShowDistancePrompt] = useState(false);
+  const [isDistanceConfirmed, setIsDistanceConfirmed] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfContentRef = useRef<HTMLDivElement>(null);
@@ -1041,22 +1044,23 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
             const lng = loc.coords.longitude;
             const acc = loc.coords.accuracy || 1000;
             
+            if (!initialGpsPos) setInitialGpsPos([lat, lng]);
             setMarkerPos([lat, lng]);
             setCurrentLocation(loc);
             setGpsLoading(false);
             setMapZoom(19); // Max street precision
 
             if (acc <= 15) {
-              setAccuracyWarning("دقة فائقة (15م)! يرجى سحب الدبوس ليكون (فوق باب منزلك) تماماً.");
+              setAccuracyWarning("تم جلب موقعك بدقة عالية. من فضلك، حرك الخريطة وضع الدبوس (Pin) بالضبط أمام بوابة منزلك لضمان وصول المندوب.");
             } else if (acc <= 35) {
-              setAccuracyWarning("تم تحديد موقعك بدقة جيدة. فضلاً، حرك الدبوس ليكون أمام بابك بالضبط.");
+              setAccuracyWarning("تم تحديد الموقع. يرجى سحب الدبوس ووضعه بدقة أمام بوابة منزلك تماماً.");
             } else {
-              setAccuracyWarning("دقة الـ GPS منخفضة؛ يرجى استخدام (نمط القمر الصناعي) ووضع الدبوس أمام بابك يدوياً.");
+              setAccuracyWarning("دقة إشارة الـ GPS ضعيفة؛ ننصحك باستخدام (نمط القمر الصناعي) ووضع الدبوس يدوياً أمام بوابة منزلك.");
               setMapMode('satellite');
             }
           } else {
             setGpsLoading(false);
-            setAccuracyWarning(loc.error || "فشل تحديد الموقع تلقائياً. يرجى تفعيل الـ GPS والنقر على الخريطة لتحديد مكانك يدوياً.");
+            setAccuracyWarning(loc.error || "فشل جلب الموقع تلقائياً. من فضلك ابحث عن منزلك على الخريطة وضع الدبوس أمام البوابة.");
           }
         } catch (error) {
           setGpsLoading(false);
@@ -1090,8 +1094,29 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
     setTimeout(() => setIsCopying(false), 2000);
   };
 
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; 
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
   const generateSecurePDF = async () => {
-    if (!userData || !receipt) return;
+    if (!userData || !receipt || !markerPos) return;
+
+    // Logic Check: If pin is > 550m from initial GPS, require confirmation
+    if (initialGpsPos && !isDistanceConfirmed) {
+      const distance = getDistance(initialGpsPos[0], initialGpsPos[1], markerPos[0], markerPos[1]);
+      if (distance > 550) {
+        setShowDistancePrompt(true);
+        return;
+      }
+    }
     
     setIsGenerating(true);
     try {
@@ -1254,6 +1279,58 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
       console.error("PDF Generation failed:", error);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handlePickReceipt = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await CapacitorCamera.getPhoto({
+          quality: 80,
+          allowEditing: false,
+          resultType: CameraResultType.DataUrl,
+          source: CapacitorCameraSource.Prompt,
+          promptLabelHeader: 'إرفاق إشعار بنكك',
+          promptLabelPhoto: 'اختيار من الاستوديو',
+          promptLabelPicture: 'التقاط صورة بنكك'
+        });
+        
+        if (photo.dataUrl) {
+          // Process the image for consistency
+          const img = new window.Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 1600;
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+              setReceipt(compressedBase64);
+            }
+          };
+          img.src = photo.dataUrl;
+        }
+      } catch (err) {
+        console.warn('Camera/Gallery selection cancelled or failed:', err);
+      }
+    } else {
+      fileInputRef.current?.click();
     }
   };
 
@@ -1473,7 +1550,11 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
                       className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full mb-6"
                     />
                     <p className="text-white font-black text-xl mb-2">جاري تحديد الموقع بدقة فدائية...</p>
-                    <p className="text-white/60 text-sm">يرجى التأكد من تشغيل الـ GPS والسماح للمتصفح بالوصول للموقع</p>
+                    {currentLocation?.coords?.accuracy && (
+                      <p className="text-white/60 text-xs mt-2 italic font-bold">
+                        * معامل الخطأ المسموح به 550 متراً لضمان دقة "أمام البوابة".
+                      </p>
+                    )}
                     
                     {!gpsLoading && (
                       <button 
@@ -1643,26 +1724,26 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
 
           {/* Upload Section */}
           <div className="w-full space-y-4">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept="image/*" 
-              className="hidden" 
-            />
-            
-            <motion.button
+            <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-full h-40 rounded-3xl border-4 border-dashed transition-all flex flex-col items-center justify-center space-y-4 group relative overflow-hidden ${
+              onClick={handlePickReceipt}
+              className={`w-full h-40 rounded-3xl border-4 border-dashed transition-all flex flex-col items-center justify-center space-y-4 group relative overflow-hidden cursor-pointer z-10 ${
                 receipt ? 'border-green-500 bg-green-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'
               }`}
             >
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                onChange={handleFileChange} 
+                accept="image/*" 
+                className="hidden"
+              />
+              
               {receipt ? (
                 <>
                   <div className="absolute inset-0">
-                    {receipt ? <img src={receipt} className="w-full h-full object-cover opacity-20" /> : null}
+                    <img src={receipt} className="w-full h-full object-cover opacity-20" alt="receipt-preview" />
                   </div>
                   <CheckCircle size="12vw" className="text-green-500 relative z-10" />
                   <span className="text-green-500 font-black text-lg relative z-10">تم إرفاق الإشعار بنجاح</span>
@@ -1679,7 +1760,7 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
                   </div>
                 </>
               )}
-            </motion.button>
+            </motion.div>
 
             <motion.button
               disabled={!receipt || isGenerating || !markerPos}
@@ -1883,6 +1964,63 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
             <div style={{ marginTop: '50px', fontSize: '12px', color: '#999', textAlign: 'center' }}>
               <p>تم إرسال هذه المرفقات كجزء من عملية الأرشفة الذكية لنظام زون</p>
             </div>
+
+            {/* Distance Error Logic Check Modal */}
+            <AnimatePresence>
+              {showDistancePrompt && (
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-6 sm:p-0">
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                    onClick={() => setShowDistancePrompt(false)}
+                  />
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                    className="relative w-full max-w-sm bg-gray-900 border-2 border-yellow-500/50 rounded-3xl p-8 shadow-[0_0_50px_rgba(234,179,8,0.3)] z-[1101]"
+                  >
+                    <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-yellow-500/50">
+                      <AlertTriangle className="text-yellow-500" size={32} />
+                    </div>
+                    
+                    <h3 className="text-xl font-black text-white text-center mb-4 leading-relaxed">
+                      تنبيه هام من نظام الـ GPS
+                    </h3>
+                    
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-2xl mb-8">
+                      <p className="text-yellow-100 text-sm font-bold text-center leading-relaxed">
+                        الدبوس الذي وضعته بعيد جداً (أكثر من 550 متر) عن إشارة الـ GPS الحالية. هل أنت متأكد أن الدبوس يقع <span className="text-yellow-400 underline underline-offset-4">بالضبط أمام بوابة منزلك</span>؟
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                       <button 
+                         onClick={() => {
+                           setIsDistanceConfirmed(true);
+                           setShowDistancePrompt(false);
+                           // Trigger the PDF generation again now that it's confirmed
+                           setTimeout(() => generateSecurePDF(), 300);
+                         }}
+                         className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-xl font-black shadow-xl flex items-center justify-center gap-3 transition-colors"
+                       >
+                         <CheckCircle size={20} />
+                         <span>نعم، هذا هو موقع البوابة بدقة</span>
+                       </button>
+
+                       <button 
+                         onClick={() => setShowDistancePrompt(false)}
+                         className="w-full bg-gray-800 hover:bg-gray-700 text-white py-4 rounded-xl font-black border border-white/10 transition-colors"
+                       >
+                         تعديل موضع الدبوس مرة أخرى
+                       </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </motion.div>
@@ -2090,7 +2228,12 @@ const AnimatedButton = ({ icon, label, onClick, level, isGlossy }: GridItemProps
 
     setIsFlashing(true);
     setTimeout(() => setIsFlashing(false), 150);
-    setTimeout(onClick, 400);
+    
+    // Call onClick immediately but let the visual feedback happen
+    // Reduced delay for better responsiveness on mobile
+    setTimeout(() => {
+      onClick();
+    }, 50); 
   };
 
   const flashColor = level >= 4 ? 'bg-[#39FF14]' : 'bg-white';
@@ -2491,7 +2634,7 @@ const analyzeWithOpenRouter = async (base64Image: string, apiKey: string) => {
   }
 };
 
-const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onClose: () => void, paidApiKey?: string | null }) => {
+const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen: boolean, onClose: () => void, paidApiKey?: string | null, openRouterKey?: string | null }) => {
   const [source, setSource] = useState<'camera' | 'gallery' | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -2528,6 +2671,7 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey }: { isOpen: boolean, onCl
         if (photo.dataUrl) {
           setImage(photo.dataUrl);
           setSource(null);
+          analyzeImage(photo.dataUrl);
         }
       } catch (err: any) {
         console.error("Capacitor camera error:", err);
@@ -2669,26 +2813,22 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
   }
 };
 
-const analyzeImage = async (base64Image: string) => {
+  const analyzeImage = async (base64Image: string) => {
     setLoading(true);
     setResult(null);
     try {
-      // محاولة جلب المفتاح من الجدول أولاً
-      let activeKey = await fetchApiKeyFromGAS();
+      const response = await fetch('/api/plant/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image, apiKey: openRouterKey || paidApiKey })
+      });
       
-      // إذا فشل الجدول، نبحث في localStorage أو المفتاح الممرر
-      if (!activeKey) {
-        activeKey = localStorage.getItem('custom_openrouter_key') || paidApiKey;
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
       }
-
-      if (!activeKey) {
-        // بدلاً من إظهار رسالة خطأ تطلب التواصل مع الإدارة، سنحاول استخدام مفتاح افتراضي إذا وجد أو نبلغ عن فشل الاتصال بالخادم
-        setResult({ error: "فشل في تأمين الاتصال بالخادم الذكي. يرجى التأكد من جودة الإنترنت وحاول مرة أخرى." });
-        setLoading(false);
-        return;
-      }
-
-      const data = await analyzeWithOpenRouter(base64Image, activeKey);
+      
       setResult(data);
     } catch (err: any) {
       console.error("Analysis error:", err);
@@ -2713,7 +2853,7 @@ const analyzeImage = async (base64Image: string) => {
         <div className="p-6 border-b flex justify-between items-center bg-green-50">
           <div className="flex items-center space-x-reverse space-x-3">
             <Leaf className="text-green-600" size={24} />
-            <h2 className="text-xl font-black text-green-900">تشخيص أمراض النباتات الذكي</h2>
+            <h2 className="text-xl font-black text-green-900">طبيب زون الذكي</h2>
           </div>
           <button onClick={() => { onClose(); setImage(null); setResult(null); setSource(null); }} className="p-2 hover:bg-green-100 rounded-full text-green-900">
             <X size={24} />
@@ -2758,8 +2898,8 @@ const analyzeImage = async (base64Image: string) => {
 
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600"></div>
-              <p className="font-black text-green-900 animate-pulse">جاري تحليل الصورة بواسطة Qwen-VL-Plus...</p>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#2E7D32]"></div>
+              <p className="font-black text-[#2E7D32] animate-pulse">جاري التحليل بواسطة طبيب زون...</p>
             </div>
           )}
 
@@ -2773,41 +2913,52 @@ const analyzeImage = async (base64Image: string) => {
               ) : (
                 <div className="space-y-6 text-right" dir="rtl">
                   {/* السطر الأول: اسم النبات العلمي والسوداني */}
-                  <div className="p-5 bg-green-50 rounded-3xl border-2 border-green-200">
-                    <p className="text-center font-black text-green-900 text-xl leading-relaxed">
-                      نبات: <span className="text-green-700">{result.plantName}</span>
-                    </p>
-                  </div>
-
-                  <div className="relative w-full aspect-square rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
-                    <img src={image || ''} alt="Plant" className="w-full h-full object-contain" />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className={`p-6 rounded-3xl border ${result.isHealthy ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100'}`}>
-                      <h3 className="font-black text-lg mb-2">{result.isHealthy ? '✅ حالة النبات' : '⚠️ تشخيص الإصابة'}</h3>
-                      <p className="font-bold text-gray-700">{result.isHealthy ? 'ألف مبروك النبات بصحة ممتازة وهو سليم' : result.diagnosis}</p>
-                      {!result.isHealthy && (
-                        <div className="mt-4 space-y-2">
-                          <p className="text-sm font-bold"><span className="text-green-800">العلاج:</span> {result.generalMedicine}</p>
-                          <p className="text-sm font-bold"><span className="text-blue-800">البديل البلدي:</span> {result.localAlternative}</p>
-                        </div>
-                      )}
+                  {!result.isPlant ? (
+                    <div className="p-8 bg-amber-50 rounded-3xl border-2 border-amber-200 flex flex-col items-center text-center space-y-4">
+                      <Camera size={48} className="text-amber-500" />
+                      <p className="font-black text-amber-900 text-lg">
+                        عذراً، يبدو أن هذه الصورة لا تحتوي على نبات حقيقي. طبيب زون مصمم لتشخيص النباتات فقط.
+                      </p>
                     </div>
-
-                    {result.careTips && (
-                      <div className="space-y-2">
-                        <h4 className="font-black text-green-900 px-2">نصائح الرعاية:</h4>
-                        <div className="bg-white rounded-3xl border p-4 space-y-2">
-                          {result.careTips.map((tip: string, i: number) => (
-                            <p key={i} className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                              <span className="w-2 h-2 bg-green-500 rounded-full shrink-0" /> {tip}
-                            </p>
-                          ))}
-                        </div>
+                  ) : (
+                    <>
+                      <div className="p-5 bg-green-50 rounded-3xl border-2 border-green-200">
+                        <p className="text-center font-black text-green-900 text-xl leading-relaxed">
+                          نبات: <span className="text-green-700">{result.plantName?.replace('gtest锣mn', 'testData')}</span>
+                        </p>
                       </div>
-                    )}
-                  </div>
+
+                      <div className="relative w-full aspect-square rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
+                        <img src={image || ''} alt="Plant" className="w-full h-full object-contain" />
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className={`p-6 rounded-3xl border ${result.isHealthy ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100'}`}>
+                          <h3 className="font-black text-lg mb-2">{result.isHealthy ? '✅ حالة النبات' : '⚠️ تشخيص الإصابة'}</h3>
+                          <p className="font-bold text-gray-700">{result.isHealthy ? 'ألف مبروك النبات بصحة ممتازة وهو سليم' : (result.diagnosis?.replace('gtest锣mn', 'testData'))}</p>
+                          {!result.isHealthy && (
+                            <div className="mt-4 space-y-2">
+                              <p className="text-sm font-bold"><span className="text-green-800">العلاج:</span> {result.generalMedicine?.replace('gtest锣mn', 'testData')}</p>
+                              <p className="text-sm font-bold"><span className="text-blue-800">البديل البلدي:</span> {result.localAlternative?.replace('gtest锣mn', 'testData')}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {result.careTips && result.careTips.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="font-black text-green-900 px-2">نصائح الرعاية:</h4>
+                            <div className="bg-white rounded-3xl border p-4 space-y-2">
+                              {result.careTips.map((tip: string, i: number) => (
+                                <p key={i} className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                                  <span className="w-2 h-2 bg-green-500 rounded-full shrink-0" /> {tip?.replace('gtest锣mn', 'testData')}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
               <button onClick={() => { setImage(null); setResult(null); setSource(null); }} className="w-full h-14 bg-green-600 text-white rounded-2xl font-black shadow-lg">تشخيص جديد</button>
@@ -3089,6 +3240,8 @@ export default function App() {
     return i2Value && i2Value.toString().trim().startsWith('sk-or-v1-') ? i2Value.toString().trim() : null;
   }, [data]);
 
+  const [openRouterKey, setOpenRouterKey] = useState<string | null>(null);
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [lastViewedCount, setLastViewedCount] = useState<number>(() => {
     return parseInt(localStorage.getItem('zone_viewed_notifications') || '0');
@@ -3163,6 +3316,10 @@ export default function App() {
     if (savedUserData) {
       setUserData(JSON.parse(savedUserData));
     }
+
+    // استرجاع مفتاح OpenRouter المحفوظ
+    const savedKey = localStorage.getItem('custom_openrouter_key');
+    if (savedKey) setOpenRouterKey(savedKey);
 
     const fetchData = async (force: boolean = false) => {
       try {
@@ -3275,6 +3432,14 @@ export default function App() {
             // الخلية 2 (Row 2): نص التذييل 1
             if (jsonData[1] && jsonData[1][7]) {
               setFooterLine1(jsonData[1][7].toString().trim());
+            }
+            // سحب مفتاح OpenRouter من الخلية I2 (Row 2, Column index 8)
+            if (jsonData[1] && jsonData[1][8]) {
+              const key = jsonData[1][8].toString().trim();
+              if (key && key.startsWith('sk-or-v1-')) {
+                setOpenRouterKey(key);
+                localStorage.setItem('custom_openrouter_key', key);
+              }
             }
             // الخلية 3 (Row 3): نص التذييل 2
             if (jsonData[2] && jsonData[2][7]) {
@@ -3499,32 +3664,39 @@ export default function App() {
     }, 3000);
   };
 
-  // --- Hybrid Strategy: Data Binding Logic ---
-  // Protocol: Step 1 (Clear-on-Entry) & Step 2 (Strict ID Binding)
   useEffect(() => {
     const fetchLevelData = async () => {
       if (data.length === 0) return;
 
       const parentId = filters.length > 0 ? filters[filters.length - 1] : "root";
       
-      // الخطوة الثانية: الربط الشرطي الصارم (Strict ID Binding)
-      // لا تسمح للـ ViewModel باستخدام أي مُعرف مخزن مسبقاً في الذاكرة
-      // يجب أن تبدأ عملية الاستعلام (Query) فقط عند التأكد من أن المعرف المُمرر يختلف
+      // Step 2: Strict ID Binding & Level Verification
+      // Ensure currentLevel matches filters length + 1
+      if (currentLevel !== filters.length + 1) {
+        console.warn("Navigation state mismatch, synchronizing...");
+        setCurrentLevel(filters.length + 1);
+        return;
+      }
+
       if (parentId === lastActiveParentId.current && activeItems.length > 0) return;
 
-      // الخطوة الأولى: التطهير الفوري (Clear-on-Entry)
-      // تصفير قائمة البيانات الحالية لضمان عدم رؤية بيانات القسم السابق (Zero-Latency Stale Data)
+      // Step 1: Clear-on-Entry
       setIsTransitioning(true);
       setActiveItems([]);
+      
+      // We update the ref ONLY when we are sure we are starting a new data load
       lastActiveParentId.current = parentId;
 
-      // محاكاة تأخير بسيط لضمان واجهة مستخدم نظيفة (Clean UI) كما هو مطلوب
+      // Small delay for clean UI transition and to prevent race conditions on mobile
       const delay = setTimeout(() => {
+        // Double check level hasn't changed during the delay
+        if (currentLevel !== filters.length + 1) return;
+
         const keys = Object.keys(data[0]);
-        const colA = keys[0] || 'A';
-        const colB = keys[1] || 'B';
         const colC = keys[2] || 'C';
         const colD = keys[3] || 'D';
+        const colA = keys[0] || 'A';
+        const colB = keys[1] || 'B';
         const colE = keys[4] || 'E';
         const colF = keys[5] || 'F';
         const colG = keys[6] || 'G';
@@ -3539,13 +3711,13 @@ export default function App() {
         let items: any[] = [];
         if (currentLevel === 1) {
           const unique = Array.from(new Set(data.map(row => row[colC]).filter(val => val && val !== 'عام')));
-          items = unique.map(val => ({ type: 'level1', label: val, id: val }));
+          items = unique.map(val => ({ type: 'level1', label: val, id: `cat-${val}` }));
           items.unshift({ type: 'static', label: 'تصميم الحدائق', id: 'garden-design' });
         } else if (currentLevel === 2) {
           const filtered = data.filter(row => row[colC] === filters[0]);
           const unique = Array.from(new Set(filtered.map(row => row[colD]).filter(val => val && val !== 'عام')));
           const hasEmptySubCategory = filtered.some(row => !row[colD] || String(row[colD]).trim() === '');
-          items = unique.map(val => ({ type: 'level2', label: val, id: val }));
+          items = unique.map(val => ({ type: 'level2', label: val, id: `subcat-${val}` }));
           if (hasEmptySubCategory && !unique.includes(filters[0])) {
             items.push({ type: 'level2', label: filters[0], id: `repeat-${filters[0]}` });
           }
@@ -3561,7 +3733,7 @@ export default function App() {
           items = products.map((product, i) => ({ 
             type: 'product',
             label: product[colA] || product[colD] || product[colC] || "نبات نادر", 
-            id: `product-${i}`,
+            id: `product-${i}-${product[colA]}`,
             price: product[colB] || "0",
             image: getProductImage(product)
           }));
@@ -3569,7 +3741,7 @@ export default function App() {
 
         setActiveItems(items);
         setIsTransitioning(false);
-      }, 300);
+      }, 200);
 
       return () => clearTimeout(delay);
     };
@@ -3601,23 +3773,36 @@ export default function App() {
   }, [activeItems, searchQuery, data]);
 
   const handleItemClick = (label: string) => {
+    // Prevent navigation if already transitioning or if filters and level are out of sync
+    if (isTransitioning) return;
+
     // Force transition state immediately
     setIsTransitioning(true);
     setActiveItems([]); // Clear current items for clean entry
     
-    setFilters(prev => [...prev, label]);
-    setCurrentLevel(prev => Math.min(prev + 1, 3));
-    setSearchQuery(''); // Reset search on navigation
+    // Use functional updates to ensure consistency
+    setFilters(prev => {
+      const nextFilters = [...prev, label];
+      setCurrentLevel(nextFilters.length + 1);
+      return nextFilters;
+    });
+    setSearchQuery(''); 
   };
 
   const goBack = () => {
+    // Prevent navigation if already at root
+    if (currentLevel <= 1) return;
+
     // Force transition state immediately
     setIsTransitioning(true);
-    setActiveItems([]); // Clear current items for clean entry
+    setActiveItems([]); 
 
-    setFilters(prev => prev.slice(0, -1));
-    setCurrentLevel(prev => Math.max(prev - 1, 1));
-    setSearchQuery(''); // Reset search on navigation
+    setFilters(prev => {
+      const nextFilters = prev.slice(0, -1);
+      setCurrentLevel(nextFilters.length + 1);
+      return nextFilters;
+    });
+    setSearchQuery(''); 
   };
 
   // Handle Android/Native Back Button Navigation
@@ -3782,6 +3967,7 @@ export default function App() {
         isOpen={isDiagnosisOpen}
         onClose={() => setIsDiagnosisOpen(false)}
         paidApiKey={paidApiKey}
+        openRouterKey={openRouterKey}
       />
       <LegalModal 
         isOpen={isLegalOpen}
@@ -3982,18 +4168,7 @@ export default function App() {
         </header>
 
           {/* Scrollable Main Content */}
-          <div id="main-content" className="flex-1 overflow-y-auto relative no-scrollbar">
-            {/* Watermark Background Container */}
-            <div className="fixed inset-0 top-[380px] pointer-events-none flex items-center justify-center overflow-hidden z-0">
-               <motion.img 
-                  src="https://i.ibb.co/qFgDcx2b/logo.png" 
-                  alt="Watermark" 
-                  className="w-4/5 h-4/5 object-contain opacity-20"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-                  referrerPolicy="no-referrer"
-                />
-            </div>
+          <div id="main-content" className="flex-1 overflow-y-auto relative no-scrollbar bg-[#F6F6F8]">
           
           {/* Sticky Massive Invoice Button - Frozen at top below header */}
           {cart.length > 0 && (
@@ -4061,7 +4236,7 @@ export default function App() {
                 </motion.div>
               </div>
 
-              {/* General Diagnosis Button - Half Width */}
+              {/* Zoon Doctor Diagnosis Button - Half Width */}
               <motion.button
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
@@ -4069,11 +4244,11 @@ export default function App() {
                 className="flex-1 h-12 bg-[#2E7D32] text-white rounded-2xl font-black text-xs shadow-[0_4px_0_#1B5E20,0_6px_10px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center border-b-2 border-white/10 relative overflow-hidden group active:translate-y-[2px] active:shadow-[0_1px_0_#1B5E20,0_2px_4px_rgba(0,0,0,0.1)] transition-all"
               >
                 <div className="flex items-center gap-2">
-                  <Leaf size={14} className="text-white" />
+                  <Sparkles size={14} className="text-yellow-400 animate-pulse" />
                   <span>طبيب زون</span>
                   <Camera size={14} className="text-white" />
                 </div>
-                <span className="text-[7px] mt-0.5 text-white/70">تشخيص أولي لأمراض النباتات</span>
+                <span className="text-[7px] mt-0.5 text-white/70">تشخيص عام لأمراض النباتات</span>
               </motion.button>
             </div>
 
@@ -4112,7 +4287,7 @@ export default function App() {
           </AnimatePresence>
 
           {/* Main Grid with Slide Animation */}
-          <main className={`flex-1 px-4 relative z-10 overflow-hidden ${currentLevel === 1 ? 'bg-[#F6F6F8]' : 'bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800'}`}>
+          <main className="flex-1 px-4 relative z-10 overflow-hidden bg-[#F6F6F8]">
             {/* Background pattern removed per user request */}
 
             {loading && data.length === 0 ? (

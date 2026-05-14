@@ -32,10 +32,11 @@ export const LocationService = {
       try {
         const perms = await Geolocation.checkPermissions();
         if (perms.location !== 'granted') {
+          // Rationale: User specifically asked for this warning text
           const req = await Geolocation.requestPermissions();
           if (req.location !== 'granted') {
             return { 
-              error: '⚠️ نحتاج لإذن الـ GPS لضمان دقة الموقع. الموقع التقريبي قد يحتوي على خطأ يصل لـ 5 كيلومترات. يرجى تفعيله من إعدادات التطبيق.' 
+              error: '⚠️ نحتاج لتفعيل "الموقع الدقيق" (Fine Location) لضمان دقة النتائج وتفادي هامش خطأ قد يصل لـ 5 كيلومترات. يرجى السماح للتطبيق بالوصول للموقع بدقة عالية من إعدادات النظام.' 
             };
           }
         }
@@ -46,40 +47,54 @@ export const LocationService = {
 
     // Attempt retrieval with strict accuracy requirements
     try {
-      // Priority: High Accuracy (Forces GPS on Android)
+      // Priority: PRIORITY_HIGH_ACCURACY is mapped to enableHighAccuracy: true in Capacitor
       const pos = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true, 
-        timeout: 20000,
-        maximumAge: 0
+        timeout: 15000, 
+        maximumAge: 0   // Force fresh coordinates, no cache
       });
 
-      const accuracy = pos.coords.accuracy;
+      const accuracy = pos.coords.accuracy || 1000;
 
-      // 2. Accuracy Filtering (Requirement: < 20 meters)
-      if (accuracy > 20 && retryCount < 3) {
-        console.log(`Low accuracy (${accuracy}m). Retrying update... Attempt ${retryCount + 1}`);
-        // Small delay before retry
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        return this.getCurrentLocation(retryCount + 1);
+      // 2. Accuracy Filtering (Requirement: accuracy <= 550 meters)
+      // Logic: If accuracy is > 550m, we request an update again and do NOT accept approximate coordinates.
+      if (accuracy > 550) {
+        if (retryCount < 4) { // Allow up to 4 retries for a total of ~1 minute wait for GPS lock
+          console.log(`Accuracy threshold (>550m) not met: ${accuracy}m. Retrying... Attempt ${retryCount + 1}`);
+          // Small delay to allow the GPS hardware to stabilize/lock better
+          await new Promise(resolve => setTimeout(resolve, 5000)); 
+          return this.getCurrentLocation(retryCount + 1);
+        } else {
+          return { 
+            error: `عذراً، الإحداثيات الحالية تقريبية (الدقة: ${Math.round(accuracy)} متر). لا يمكننا قبول موقع غير دقيق. يرجى تفعيل الـ GPS والوقوف في مكان مكشوف للسماء لضمان دقة أقل من 550 متراً.` 
+          };
+        }
       }
 
       return this.formatResult(pos);
 
     } catch (e) {
-      console.warn('High Accuracy retrieval failed. Trying one last time...', e);
+      console.warn('High Accuracy retrieval failed search...', e);
       
-      // Fallback for Web/Browser environments
+      // Fallback for Web/Browser environments with high accuracy request
       if (!isNative && typeof navigator !== 'undefined' && navigator.geolocation) {
         return new Promise((resolve) => {
           navigator.geolocation.getCurrentPosition(
-            (pos) => resolve(this.formatResult(pos)),
-            (err) => resolve({ error: 'عذراً، فشل تحديد الموقع بدقة. تأكد من تفعيل الـ GPS في جهازك.' }),
+            (pos) => {
+              const res = this.formatResult(pos);
+              if (res.coords && (res.coords.accuracy || 1000) > 550) {
+                 resolve({ error: 'المتصفح يقدم إحداثيات غير دقيقة. يرجى استخدام متصفح حديث أو تفعيل الـ GPS.' });
+              } else {
+                 resolve(res);
+              }
+            },
+            (err) => resolve({ error: 'عذراً، فشل تحديد الموقع بدقة العالية. تأكد من تفعيل الموقع في المتصفح.' }),
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
           );
         });
       }
       
-      return { error: 'فشل تحديد الموقع عالي الدقة. يرجى التأكد من تفعيل الموقع (GPS) في وضع "الدقة العالية".' };
+      return { error: 'فشل تفعيل نظام الـ GPS فائق الدقة. يرجى التأكد من تفعيل "دقة الموقع العالية" في إعدادات جهازك.' };
     }
   },
 
@@ -95,7 +110,7 @@ export const LocationService = {
         accuracy: accuracy
       },
       timestamp: pos.timestamp,
-      isAccurate: accuracy <= 20 // Enforced threshold
+      isAccurate: accuracy <= 550 // Enforced threshold
     };
   }
 };
