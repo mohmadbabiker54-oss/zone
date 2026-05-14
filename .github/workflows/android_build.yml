@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Final Resource Purge & AAB)
+name: Build Android (Zoon - Duplicate Resource Fix)
 
 on:
   workflow_dispatch:
@@ -32,34 +32,30 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Ultimate Resource Cleansing (AAPT2 Fix)
+      - name: Resource De-duplication & Purge
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
           cd android/app/src/main/res
           
-          # دالة لإنشاء صور PNG متوافقة مع AAPT2
-          force_fix_png() {
-            find . -name "$1" -exec convert -size "$2" xc:white {} \;
-          }
-
-          # تطهير كافة ملفات الأيقونات (Launcher Icons)
-          force_fix_png "ic_launcher*.png" "192x192"
+          # حذف ملف الألوان المكرر الذي يسبب التعارض مع ic_launcher_background.xml
+          rm -f values/ic_launcher_background.xml || true
           
-          # تطهير كافة ملفات الشاشة الافتتاحية (Splash Screens) في كل الأوضاع (الطولي والعرضي)
-          force_fix_png "splash.png" "512x512"
+          # التأكد من وجود تعريف واحد فقط في colors.xml لتجنب الفشل
+          if [ -f values/colors.xml ]; then
+            echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#FFFFFF</color></resources>' > values/colors.xml
+          fi
 
-      - name: Ultimate SDK 36 & AGP Alignment
+          # تطهير الصور لضمان عدم وجود ملفات تالفة (AAPT2)
+          find . -name "ic_launcher*.png" -exec convert -size 192x192 xc:white {} \;
+          find . -name "splash.png" -exec convert -size 512x512 xc:white {} \;
+
+      - name: Sovereign SDK 36 Alignment
         run: |
           cd android
-          # تحديث محرك البناء ليناسب مكتبات androidx الحديثة
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
-          
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          
-          # تعديل الصلاحيات لـ MainActivity لضمان التوافق
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # ضبط SDK 36 المطلوب برمجياً لـ Zoon
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
