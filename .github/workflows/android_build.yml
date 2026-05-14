@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Ultimate Resource Fix & AAB)
+name: Build Android (Zoon - Final XML Purge)
 
 on:
   workflow_dispatch:
@@ -32,39 +32,36 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Resource De-duplication & Image Fix
+      - name: Absolute Resource Purge
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
           cd android/app/src/main/res
           
-          # 1. حل مشكلة التكرار: حذف الملف الإضافي والاعتماد على تعريف واحد
-          rm -f values/ic_launcher_background.xml || true
+          # 1. حذف شامل لملف ic_launcher_background من كل مكان لمنع التعارض
+          find . -name "ic_launcher_background.xml" -delete
           
-          # 2. ضمان وجود ملف ألوان نظيف بدون تكرار
+          # 2. إنشاء ملف الألوان من جديد وبدقة متناهية (Single Source of Truth)
           mkdir -p values
-          cat <<EOF > values/colors.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="ic_launcher_background">#FFFFFF</color>
-          </resources>
-          EOF
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#FFFFFF</color>\n    <color name="colorPrimary">#008577</color>\n    <color name="colorPrimaryDark">#00574B</color>\n    <color name="colorAccent">#D81B60</color>\n</resources>' > values/colors.xml
 
-          # 3. معالجة الصور لضمان قبولها في نظام AAPT2
+          # 3. إنشاء ملف الخلفية كـ Vector في مجلد drawable واحد فقط وبصيغة نظيفة
+          mkdir -p drawable
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n    <path android:fillColor="#FFFFFF" android:pathData="M0,0h108v108h-108z" />\n</vector>' > drawable/ic_launcher_background.xml
+
+          # 4. تطهير الصور لضمان عبور AAPT2
           find . -name "ic_launcher*.png" -exec convert -size 192x192 xc:white {} \;
           find . -name "splash.png" -exec convert -size 512x512 xc:white {} \;
 
-      - name: Ultimate SDK 36 Alignment
+      - name: Sovereign SDK 36 Alignment
         run: |
           cd android
-          # تحديث محرك البناء AGP
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
-          
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
           
-          # إصلاح Java Access
+          # إصلاح MainActivity Java
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # ضبط SDK النهائي
+          # ضبط مستويات الـ SDK المطلوبة
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
@@ -78,6 +75,7 @@ jobs:
       - name: Generate Sovereign AAB
         run: |
           cd android
+          # تنظيف الذاكرة المؤقتة بعمق قبل البناء
           ./gradlew clean bundleRelease --no-daemon
 
       - name: Upload Sovereign AAB
