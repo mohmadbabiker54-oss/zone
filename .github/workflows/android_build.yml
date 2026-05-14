@@ -1,4 +1,4 @@
-name: Build Android (Zoon - AGP Upgrade & AAB)
+name: Build Android (Zoon - SDK 36 Final Alignment)
 
 on:
   workflow_dispatch:
@@ -28,7 +28,6 @@ jobs:
       - name: Install Dependencies & Build Assets
         run: |
           npm install --legacy-peer-deps
-          # التأكد من وجود مجلد ويب لتجنب فشل كاباسيتور
           npm run build --if-present
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
@@ -37,37 +36,30 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
           cd android
-          create_valid_png() {
-            local path=$1
-            local size=$2
-            mkdir -p "$(dirname "$path")"
-            convert -size "$size" xc:white "$path"
-          }
-          # إصلاح شامل للأيقونات لتجنب أي فشل في AAPT2
+          # إصلاح شامل للأيقونات لتجنب أي فشل في محرك الرسوميات
           find app/src/main/res -name "ic_launcher*.png" -exec convert -size 96x96 xc:white {} \;
           find app/src/main/res -name "splash.png" -exec convert -size 512x512 xc:white {} \;
 
-      - name: Upgrade Build Engine (AGP 8.9.1)
+      - name: Ultimate SDK 36 Alignment
         run: |
           cd android
-          # تحديث إصدار Android Gradle Plugin المطلوب من قبل androidx.core
+          # تحديث محرك البناء AGP ليتوافق مع المتطلبات الجديدة
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
           
-          # تحديث Gradle Wrapper ليتوافق مع المحرك الجديد
-          gradle wrapper --gradle-version 8.11.1
-          
-          # إصلاح خصائص البيئة
+          # ضبط ملفات الخصائص
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
           sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-          # ضبط SDK النهائي لمشروع Zoon
+          # التعديل الجوهري: رفع compileSdk و targetSdk إلى 36
           cd app
           sed -i '/minSdkVersion/d' build.gradle || true
           sed -i '/compileSdk/d' build.gradle || true
           sed -i '/targetSdk/d' build.gradle || true
-          sed -i '/android {/a \    compileSdk 35\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 35\n    }' build.gradle
+          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
           
-          chmod +x ../gradlew
+          cd ..
+          gradle wrapper --gradle-version 8.11.1
+          chmod +x gradlew
 
       - name: Generate Sovereign AAB
         run: |
