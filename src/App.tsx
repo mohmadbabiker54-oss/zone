@@ -1285,6 +1285,21 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
   const handlePickReceipt = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
+        // Explicitly check and request permissions for native platforms
+        const status = await CapacitorCamera.checkPermissions();
+        
+        if (status.camera !== 'granted' || (status.photos !== 'granted' && status.photos !== 'limited')) {
+          const request = await CapacitorCamera.requestPermissions({
+            permissions: ['camera', 'photos']
+          });
+          
+          if (request.camera !== 'granted' || (request.photos !== 'granted' && request.photos !== 'limited')) {
+            console.error('Permission denied for camera or photos');
+            // We could show a toast or alert here, but simple rejection for now
+            return;
+          }
+        }
+
         const photo = await CapacitorCamera.getPhoto({
           quality: 80,
           allowEditing: false,
