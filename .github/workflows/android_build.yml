@@ -1,4 +1,4 @@
-name: Build Android (Zoon - APK with Icon Fix)
+name: Build Android (Zoon - Deep Resource Clean & APK)
 
 on:
   workflow_dispatch:
@@ -32,15 +32,17 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Engineering Zoon Icon (Adaptive Fix)
+      - name: Deep Res Clean (Fix AAPT2 For Splash & Launcher)
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
           RES_DIR="android/app/src/main/res"
           
-          # 1. إنشاء مجلد الأيقونات التكيفية الحديثة
+          # 1. تطهير شامل وعميق لكل ملفات ic_launcher و splash في كل المجلدات الفرعية دون استثناء
+          find $RES_DIR -type f -name "ic_launcher*.png" -exec convert -size 192x192 xc:white {} \;
+          find $RES_DIR -type f -name "splash.png" -exec convert -size 512x512 xc:white {} \;
+
+          # 2. بناء مجلد الأيقونات التكيفية الحديثة لمنع الأيقونة البيضاء الفارغة
           mkdir -p $RES_DIR/mipmap-anydpi-v26
-          
-          # 2. إنشاء ملف تعريف الأيقونة (الربط بين الشعار والخلفية)
           cat <<EOF > $RES_DIR/mipmap-anydpi-v26/ic_launcher.xml
           <?xml version="1.0" encoding="utf-8"?>
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
@@ -49,7 +51,7 @@ jobs:
           </adaptive-icon>
           EOF
 
-          # 3. توحيد الألوان لضمان خلفية بيضاء ناصعة خلف الشعار
+          # 3. توحيد الألوان في ملف الألوان الرئيسي
           mkdir -p $RES_DIR/values
           cat <<EOF > $RES_DIR/values/colors.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -58,13 +60,8 @@ jobs:
           </resources>
           EOF
 
-          # 4. توليد شعار زون (الطبقة الأمامية) برمجياً لضمان عدم الفراغ
-          # ملاحظة: سنقوم بصناعة شعار مؤقت أبيض لضمان مرور البناء، 
-          # ويفضل لاحقاً وضع شعار زون الأصلي في resources/icon.png
-          find $RES_DIR -name "ic_launcher_foreground.png" -exec convert -size 192x192 xc:white {} \;
-          
-          # تنظيف أي ملفات قديمة تسبب تعارض (Duplicate resources)
-          find $RES_DIR -name "ic_launcher_background.xml" -delete
+          # 4. مسح أي ملف تكرار قديم مسبب للمشاكل
+          find $RES_DIR -name "ic_launcher_background.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
 
       - name: Sovereign SDK 36 Alignment
         run: |
