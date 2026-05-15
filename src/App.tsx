@@ -32,6 +32,14 @@ L.Marker.prototype.options.icon = DefaultIcon;
 // --- GLOBAL CONFIGURATION (ZONE APP ENGINE) ---
 const SYSTEM_API_KEY = '';
 const SYSTEM_GAS_URL = 'https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec';
+const PROD_URL = 'https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app';
+
+const getApiUrl = (path: string) => {
+  if (Capacitor.isNativePlatform()) {
+    return `${PROD_URL}${path}`;
+  }
+  return path;
+};
 // ----------------------------------------------
 
 import { 
@@ -2759,6 +2767,35 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
     }
   };
 
+  const pickImageFromCamera = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const permissions = await CapacitorCamera.checkPermissions();
+        if (permissions.camera !== 'granted') {
+          const request = await CapacitorCamera.requestPermissions({ permissions: ['camera'] });
+          if (request.camera !== 'granted') {
+            alert("يرجى إعطاء الإذن للكاميرا من إعدادات الهاتف لتتمكن من التصوير.");
+            return;
+          }
+        }
+
+        const photo = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: true,
+          resultType: CameraResultType.DataUrl,
+          source: CapacitorCameraSource.Camera
+        });
+        if (photo.dataUrl) {
+          setImage(photo.dataUrl);
+          setSource(null);
+          analyzeImage(photo.dataUrl);
+        }
+      } catch (err) {
+        console.error("Capacitor camera error:", err);
+      }
+    }
+  };
+
   const pickImageFromGallery = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
@@ -2832,7 +2869,7 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
     setLoading(true);
     setResult(null);
     try {
-      const response = await fetch('/api/plant/diagnose', {
+      const response = await fetch(getApiUrl('/api/plant/diagnose'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image, apiKey: openRouterKey || paidApiKey })
@@ -2879,7 +2916,7 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
           {!source && !image && !loading && !result && (
             <div className="grid grid-cols-2 gap-4">
               <button 
-                onClick={() => setSource('camera')} 
+                onClick={() => Capacitor.isNativePlatform() ? pickImageFromCamera() : setSource('camera')} 
                 className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 hover:bg-green-100 transition-all group"
               >
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
