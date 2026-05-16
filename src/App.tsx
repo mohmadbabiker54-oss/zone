@@ -6,7 +6,7 @@ import html2canvas from 'html2canvas';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { App as CapApp } from '@capacitor/app';
 import { Share } from '@capacitor/share';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource as CapacitorCameraSource } from '@capacitor/camera';
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle as LeafletCircle } from 'react-leaflet';
@@ -1309,13 +1309,14 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
         }
 
         const photo = await CapacitorCamera.getPhoto({
-          quality: 80,
+          quality: 60,
           allowEditing: false,
           resultType: CameraResultType.DataUrl,
           source: CapacitorCameraSource.Prompt,
           promptLabelHeader: 'إرفاق إشعار بنكك',
           promptLabelPhoto: 'اختيار من الاستوديو',
-          promptLabelPicture: 'التقاط صورة بنكك'
+          promptLabelPicture: 'التقاط صورة بنكك',
+          width: 1000
         });
         
         if (photo.dataUrl) {
@@ -2542,20 +2543,6 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
         ))}
       </motion.div>
 
-      <div className="absolute inset-0 flex items-center justify-center">
-        {/* Intense Pulsating Central Glow */}
-        <motion.div 
-          className="absolute w-[100vw] h-[100vw] bg-[#FFD700]/10 rounded-full blur-[80px]"
-          animate={{ opacity: [0.15, 0.3, 0.15] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        />
-        <motion.div 
-          className="absolute w-[80vw] h-[80vw] bg-[#F59E0B]/15 rounded-full blur-[60px]"
-          animate={{ opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 3.5, repeat: Infinity }}
-        />
-      </div>
-
       {/* Core Logo Enclosed in a Sun-like Circle */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -2567,17 +2554,14 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
         className="relative z-10 w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center"
       >
         {/* The Solar Disk (The Sun) */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-500 shadow-[0_0_100px_rgba(255,215,0,0.5)] border-4 border-yellow-200/50 overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 rounded-full bg-yellow-500 border-4 border-yellow-600 flex items-center justify-center overflow-hidden">
           <img 
             src="https://i.ibb.co/qFgDcx2b/logo.png" 
             alt="Zone Logo"
-            className="w-4/5 h-4/5 object-contain relative z-20 drop-shadow-md mix-blend-multiply"
+            className="w-full h-full object-cover rounded-full relative z-20"
             referrerPolicy="no-referrer"
           />
         </div>
-        
-        {/* Secondary Inner Glow */}
-        <div className="absolute inset-[-10%] rounded-full bg-yellow-400/20 blur-2xl animate-pulse" />
       </motion.div>
     </div>
   );
@@ -2780,10 +2764,12 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         }
 
         const photo = await CapacitorCamera.getPhoto({
-          quality: 90,
-          allowEditing: true,
+          quality: 60,
+          allowEditing: false,
           resultType: CameraResultType.DataUrl,
-          source: CapacitorCameraSource.Camera
+          source: CapacitorCameraSource.Camera,
+          width: 800,
+          correctOrientation: true
         });
         if (photo.dataUrl) {
           setImage(photo.dataUrl);
@@ -2809,10 +2795,12 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         }
 
         const photo = await CapacitorCamera.getPhoto({
-          quality: 90,
+          quality: 60,
           allowEditing: false,
           resultType: CameraResultType.DataUrl,
-          source: CapacitorCameraSource.Photos
+          source: CapacitorCameraSource.Photos,
+          width: 800,
+          correctOrientation: true
         });
         if (photo.dataUrl) {
           setImage(photo.dataUrl);
@@ -2871,16 +2859,29 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
     const apiUrl = getApiUrl('/api/plant/diagnose');
     
     try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image, apiKey: openRouterKey || paidApiKey })
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
+      let data;
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.post({
+          url: apiUrl,
+          headers: { 'Content-Type': 'application/json' },
+          data: { image: base64Image, apiKey: openRouterKey || paidApiKey }
+        });
+        data = response.data;
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error(data.error || `Error: ${response.status}`);
+        }
+      } else {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Image, apiKey: openRouterKey || paidApiKey })
+        });
+        
+        data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
+        }
       }
       
       setResult(data);
