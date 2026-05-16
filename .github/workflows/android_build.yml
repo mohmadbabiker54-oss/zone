@@ -1,0 +1,93 @@
+name: Build Android (Zoon - Deep Resource Clean & APK)
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Dependencies & Build Assets
+        run: |
+          npm install --legacy-peer-deps
+          npm run build --if-present
+          mkdir -p dist && touch dist/index.html 
+          npx cap sync android
+
+      - name: Deep Res Clean (Fix AAPT2 For Splash & Launcher)
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          RES_DIR="android/app/src/main/res"
+          
+          # 1. تطهير شامل وعميق لكل ملفات ic_launcher و splash في كل المجلدات الفرعية دون استثناء
+          find $RES_DIR -type f -name "ic_launcher*.png" -exec convert -size 192x192 xc:white {} \;
+          find $RES_DIR -type f -name "splash.png" -exec convert -size 512x512 xc:white {} \;
+
+          # 2. بناء مجلد الأيقونات التكيفية الحديثة لمنع الأيقونة البيضاء الفارغة
+          mkdir -p $RES_DIR/mipmap-anydpi-v26
+          cat <<EOF > $RES_DIR/mipmap-anydpi-v26/ic_launcher.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/ic_launcher_background" />
+              <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+          </adaptive-icon>
+          EOF
+
+          # 3. توحيد الألوان في ملف الألوان الرئيسي
+          mkdir -p $RES_DIR/values
+          cat <<EOF > $RES_DIR/values/colors.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="ic_launcher_background">#FFFFFF</color>
+          </resources>
+          EOF
+
+          # 4. مسح أي ملف تكرار قديم مسبب للمشاكل
+          find $RES_DIR -name "ic_launcher_background.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
+
+      - name: Sovereign SDK 36 Alignment
+        run: |
+          cd android
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
+
+          cd app
+          sed -i '/minSdkVersion/d' build.gradle || true
+          sed -i '/compileSdk/d' build.gradle || true
+          sed -i '/targetSdk/d' build.gradle || true
+          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
+          
+          cd ..
+          gradle wrapper --gradle-version 8.11.1
+          chmod +x gradlew
+
+      - name: Generate Zoon APK
+        run: |
+          cd android
+          ./gradlew clean assembleRelease --no-daemon
+
+      - name: Upload Zoon APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zoon-App-With-Icon
+          path: android/app/build/outputs/apk/release/*.apk
