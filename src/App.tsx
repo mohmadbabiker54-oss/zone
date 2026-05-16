@@ -32,7 +32,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 // --- GLOBAL CONFIGURATION (ZONE APP ENGINE) ---
 const SYSTEM_API_KEY = '';
 const SYSTEM_GAS_URL = 'https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0qG5WeV5KRNqqTidI1JhL6yV-Fm9Lp3EpKzMGdlillHfCBoknfMqv/exec';
-const PROD_URL = 'https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app';
+const PROD_URL = import.meta.env.VITE_PROD_URL || 'https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app';
 
 const getApiUrl = (path: string) => {
   if (Capacitor.isNativePlatform()) {
@@ -2868,8 +2868,10 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
   const analyzeImage = async (base64Image: string) => {
     setLoading(true);
     setResult(null);
+    const apiUrl = getApiUrl('/api/plant/diagnose');
+    
     try {
-      const response = await fetch(getApiUrl('/api/plant/diagnose'), {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image, apiKey: openRouterKey || paidApiKey })
@@ -2884,9 +2886,17 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
       setResult(data);
     } catch (err: any) {
       console.error("Analysis error:", err);
+      let errorMessage = "عذراً، حدث خطأ أثناء تحليل الصورة. يرجى المحاولة لاحقاً.";
+      
+      if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+        errorMessage = "فشل الاتصال بالخادم. تأكد من توفر الإنترنت وأن الرابط " + apiUrl + " متاح حالياً.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       setResult({ 
-        error: err.message.length < 100 ? err.message : "عذراً، حدث خطأ أثناء تحليل الصورة. يرجى المحاولة لاحقاً.", 
-        debug: err.message 
+        error: errorMessage, 
+        debug: err.stack || err.message 
       });
     } finally {
       setLoading(false);

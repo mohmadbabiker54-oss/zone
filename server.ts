@@ -2,9 +2,13 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import axios from "axios";
+import cors from "cors";
 
 const app = express();
 const PORT = 3000;
+
+// Enable CORS for mobile apps
+app.use(cors());
 
 // Middleware for parsing JSON with a larger limit for images
 app.use(express.json({ limit: '10mb' }));
