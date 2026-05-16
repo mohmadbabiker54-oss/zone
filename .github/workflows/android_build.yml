@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Ultimate Google Drive Logo Fix & APK)
+name: Build Android (Zoon - Google Drive Logo Fix V2 & APK)
 
 on:
   workflow_dispatch:
@@ -32,39 +32,39 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Download, Purge Pink Background & Resize Logo
+      - name: Download, Purge Pink Background & Precise Resize
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick curl
           RES_DIR="android/app/src/main/res"
           
-          # 1. تنظيف المجلدات الفرعية من أي مخلفات قديمة
+          # 1. تنظيف المجلدات الفرعية بشكل كامل لمنع أي تراكمات قديمة
           find $RES_DIR -type f -name "ic_launcher*.png" -delete
           find $RES_DIR -type f -name "splash.png" -delete
 
-          # 2. تحميل الصورة الخام مباشرة من جوجل درايف باستخدام المعرف الفريد
+          # 2. جلب الصورة الأصلية من جوجل درايف
           mkdir -p resources
-          echo "Downloading Sovereign Zoon Logo from Google Drive..."
+          echo "Downloading Sovereign Zoon Logo..."
           curl -sL "https://docs.google.com/uc?export=download&id=1T9BVEcfQqCh62Va0WgdW5ZwkeTaIBCTG" -o resources/raw_icon.png
 
-          # 3. معالجة بصرية ذكية: إزالة اللون القريب من البمبي/الوردي وجعل الخلفية بيضاء ناصعة
-          # الأداة ستقوم بتحويل اللون الخلفي إلى شفاف ثم دمج الشعار فوق خلفية بيضاء صافية لتأمين الهوية البصرية لـ Zoon
+          # 3. تطهير الخلفية: معالجة بصرية لتحويل درجات اللون البمبي/الوردي إلى أبيض ناصع
           if [ -f "resources/raw_icon.png" ]; then
             echo "Processing image: Converting pinkish backgrounds to absolute white..."
             convert resources/raw_icon.png -fuzz 25% -transparent "#FFC0CB" -background "#FFFFFF" -flatten resources/icon.png || cp resources/raw_icon.png resources/icon.png
           fi
 
-          # 4. هندسة المقاسات والأبعاد القياسية وتوزيعها عبر طبقات النظام (Foreground)
+          # 4. توزيع الشعار بالمقاسات الصحيحة (مع استثناء مجلد anydpi-v26 منعاً للتكرار والتعارض)
           if [ -f "resources/icon.png" ]; then
-            echo "Injecting resized logos into Android resource buckets..."
-            find $RES_DIR -type d -name "mipmap-*" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher_foreground.png \;
-            # توليد أيقونة تقليدية كاحتياط للأنظمة القديمة جداً
-            find $RES_DIR -type d -name "mipmap-*" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher.png \;
+            echo "Injecting resized logos carefully..."
+            # توليد الطبقة الأمامية في مجلدات الكثافة فقط (hdpi, xhdpi, ... إلخ) دون anydpi
+            find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher_foreground.png \;
+            # توليد الأيقونة الأساسية للأنظمة القديمة في المجلدات المخصصة لها فقط
+            find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher.png \;
           else
-            echo "Critical Error: Logo could not be prepared, using standard cryptographic identifier fallback."
-            find $RES_DIR -type d -name "mipmap-*" -exec convert -size 192x192 xc:none -pointsize 72 -fill "#008577" -gravity center -draw "text 0,0 'Z'" {}/ic_launcher_foreground.png \;
+            echo "Critical Fallback triggered."
+            find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert -size 192x192 xc:none -pointsize 72 -fill "#008577" -gravity center -draw "text 0,0 'Z'" {}/ic_launcher_foreground.png \;
           fi
 
-          # 5. بناء هيكل الأيقونة التكيفية (Adaptive Icon Architecture)
+          # 5. بناء هيكل الأيقونة التكيفية النظيف في مجلد الأكواد (بدون صور مكررة بجانبه)
           mkdir -p $RES_DIR/mipmap-anydpi-v26
           cat <<EOF > $RES_DIR/mipmap-anydpi-v26/ic_launcher.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -74,7 +74,7 @@ jobs:
           </adaptive-icon>
           EOF
 
-          # 6. تثبيت اللون الأبيض للخلفية برمجياً لمنع "القطعة البيضاء الصامتة"
+          # 6. تثبيت اللون الأبيض للخلفية برمجياً
           mkdir -p $RES_DIR/values
           cat <<EOF > $RES_DIR/values/colors.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -83,7 +83,7 @@ jobs:
           </resources>
           EOF
 
-          # تنظيف ملفات الخلفيات القديمة المتعارضة
+          # التخلص من أي ملفات تعارض أخرى
           find $RES_DIR -name "ic_launcher_background.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
 
       - name: Sovereign SDK 36 Alignment
