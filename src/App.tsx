@@ -35,7 +35,9 @@ const SYSTEM_GAS_URL = 'https://script.google.com/macros/s/AKfycbwM79ElW-MwwQW0q
 const PROD_URL = import.meta.env.VITE_PROD_URL || 'https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app';
 
 const getApiUrl = (path: string) => {
-  if (Capacitor.isNativePlatform()) {
+  // Check if we're on a mobile device or native platform
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (Capacitor.isNativePlatform() || isMobile) {
     return `${PROD_URL}${path}`;
   }
   return path;
@@ -2506,44 +2508,7 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
     <div className="fixed inset-0 bg-[#042f22] flex items-center justify-center overflow-hidden z-[100]">
       <audio ref={audioRef} src="https://docs.google.com/uc?export=download&id=11-PcQTJ8WG1jUPIZl2aHjViIDh13l9Lv" />
 
-      {/* Pulsating Radiant Rays (Moving Outward to Edges) */}
-      <motion.div 
-        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        animate={{ 
-          rotate: 360,
-        }}
-        transition={{ 
-          duration: 30, repeat: Infinity, ease: "linear"
-        }}
-      >
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="absolute inset-0 flex items-center justify-center" style={{ rotate: `${i * 60}deg` }}>
-            {/* Pulsating Ray Beam */}
-            <motion.div
-              className="absolute w-[16px] origin-bottom"
-              style={{ 
-                height: '150vh',
-                bottom: '50%',
-                background: 'linear-gradient(to top, rgba(255,215,0,0.8), rgba(245,158,11,0.4), transparent)',
-                filter: 'blur(2px)',
-                mixBlendMode: 'screen'
-              }}
-              animate={{ 
-                scaleY: [0.9, 1.6, 0.9],
-                opacity: [0.4, 0.8, 0.4],
-              }}
-              transition={{ 
-                duration: 5,
-                repeat: Infinity,
-                delay: i * 0.3,
-                ease: "easeInOut"
-              }}
-            />
-          </div>
-        ))}
-      </motion.div>
-
-      {/* Core Logo Enclosed in a Sun-like Circle */}
+      {/* Core Logo Enclosed in a simple Circle */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -2551,100 +2516,29 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
           scale: { duration: 0.8, ease: "easeOut" },
           opacity: { duration: 0.5 }
         }}
-        className="relative z-10 w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center"
+        className="relative z-10 w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center rounded-full bg-white shadow-2xl p-0 overflow-hidden"
       >
-        {/* The Solar Disk (The Sun) */}
-        <div className="absolute inset-0 rounded-full bg-yellow-500 border-4 border-yellow-600 flex items-center justify-center overflow-hidden">
-          <img 
-            src="https://i.ibb.co/qFgDcx2b/logo.png" 
-            alt="Zone Logo"
-            className="w-full h-full object-cover rounded-full relative z-20"
-            referrerPolicy="no-referrer"
-          />
-        </div>
+        <img 
+          src="https://i.ibb.co/qFgDcx2b/logo.png" 
+          alt="Zone Logo"
+          className="w-full h-full object-cover rounded-full"
+          referrerPolicy="no-referrer"
+          style={{ clipPath: 'circle(50%)' }}
+        />
       </motion.div>
     </div>
   );
 };
 
-// تشخيص أمراض النباتات باستخدام OpenRouter (Qwen-VL-Plus)
-const OPENROUTER_MODEL = "qwen/qwen-vl-max";
-
-const analyzeWithOpenRouter = async (base64Image: string, apiKey: string) => {
-  const prompt = `
-أنت خبير بوتانيكا (علم النبات) وعالم زراعي متخصص. قم بتحليل هذه الصورة بدقة متناهية:
-1. تحقق أولاً وتأكد تماماً: هل هذه الصورة تحتوي على نبات حقيقي (أو جزء من نبات كالأوراق/الأزهار)؟ 
-2. إذا كانت الصورة لشيء آخر تماماً (مثلاً: حائط، إنسان، جماد، غرفة مظلمة، أثاث)، يجب أن تضع قيمة الحقل "isPlant" إلى false.
-3. إذا كانت الصورة لنبات، قم بالتعرف على نوعه وفحص حالته.
-
-أريد الرد حصراً بتنسيق JSON وبالمواصفات التالية:
-{
-  "isPlant": boolean (اجعلها false إذا لم يكن هناك نبات حقيقي في الصورة),
-  "plantName": "اسم النبات (علمي وشائع بالسودانية) أو اتركها فارغة إذا لم يكن نباتاً",
-  "isHealthy": boolean, 
-  "diagnosis": "إذا لم يكن نباتاً اكتب: 'عذراً، هذه الصورة لا تبدو لنبات حقيقي'. وإذا كان سليماً اكتب تهنئة، وإذا كان مريضاً اذكر التشخيص",
-  "generalMedicine": "العلاج المقترح إذا كان نباتاً ومصاباً",
-  "localAlternative": "وصفة بلدية طبيعية (مثل محلول الشطة أو الرماد)",
-  "careTips": ["نصائح رعاية تناسب مناخ السودان الحار"]
-}
-تحذير شديد: لا تذكر أي حروف إنجليزية. لا تخدع نفسك؛ إذا كان جماداً قل أنه جماد في حقل isPlant. لا تذكر أي نص خارج ملف JSON.
-ملاحظة هامة جداً للري: ممنوع منعاً باتاً تحديد فترات زمنية ثابتة للري (مثل اسقِ كل 3 أيام). بدلاً من ذلك، قدم نصيحة تعتمد على جفاف التربة، مثلاً: "اسقِ عند جفاف أول 2 سم من سطح التربة" أو "تأكد من جفاف التربة قبل الري مرة أخرى" لأن الحاجة تختلف حسب حجم الأصيص والبيئة.
-`;
-
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": window.location.origin,
-        "X-Title": "Zone Agribusiness App",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              {
-                type: "image_url",
-                image_url: {
-                  url: base64Image
-                }
-              }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `خطأ في الاتصال بالسيرفر (${response.status})`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]);
-      if (result.isPlant === false) {
-        throw new Error(result.diagnosis || "عذراً، هذه الصورة لا تبدو لنبات حقيقي. يرجى تصوير نبات واضح.");
-      }
-      return result;
-    }
-    throw new Error("فشل في تحليل استجابة الذكاء الاصطناعي");
-  } catch (err: any) {
-    console.error("OpenRouter fetch error:", err);
-    throw new Error(err.message.includes("isPlant") ? err.message : (err.message === "Failed to fetch" ? "فشل الاتصال بـ OpenRouter." : err.message));
-  }
-};
+// --- API CONFIGURATION ---
+// Refactored to server-side diagnosis
+// -------------------------
 
 const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen: boolean, onClose: () => void, paidApiKey?: string | null, openRouterKey?: string | null }) => {
   const [source, setSource] = useState<'camera' | 'gallery' | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<any>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -2764,11 +2658,11 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         }
 
         const photo = await CapacitorCamera.getPhoto({
-          quality: 60,
+          quality: 80,
           allowEditing: false,
           resultType: CameraResultType.DataUrl,
           source: CapacitorCameraSource.Camera,
-          width: 800,
+          width: 1024,
           correctOrientation: true
         });
         if (photo.dataUrl) {
@@ -2795,11 +2689,11 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         }
 
         const photo = await CapacitorCamera.getPhoto({
-          quality: 60,
+          quality: 80,
           allowEditing: false,
           resultType: CameraResultType.DataUrl,
           source: CapacitorCameraSource.Photos,
-          width: 800,
+          width: 1024,
           correctOrientation: true
         });
         if (photo.dataUrl) {
@@ -2855,8 +2749,19 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
 
   const analyzeImage = async (base64Image: string) => {
     setLoading(true);
+    setProgress(0);
     setResult(null);
     const apiUrl = getApiUrl('/api/plant/diagnose');
+
+    // Progress simulation interval
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 98) return prev; // Hold at 98 until real response
+        // Faster jump at start, then slow down
+        const jump = prev < 30 ? (Math.random() * 20 + 5) : (Math.random() * 3 + 1);
+        return Math.min(prev + jump, 98);
+      });
+    }, 400);
     
     try {
       let data;
@@ -2864,7 +2769,9 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         const response = await CapacitorHttp.post({
           url: apiUrl,
           headers: { 'Content-Type': 'application/json' },
-          data: { image: base64Image, apiKey: openRouterKey || paidApiKey }
+          data: { image: base64Image, apiKey: openRouterKey || paidApiKey },
+          connectTimeout: 60000,
+          readTimeout: 60000
         });
         data = response.data;
         if (response.status < 200 || response.status >= 300) {
@@ -2884,22 +2791,24 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         }
       }
       
+      setProgress(100);
       setResult(data);
     } catch (err: any) {
       console.error("Analysis error:", err);
       let errorMessage = "عذراً، حدث خطأ أثناء تحليل الصورة. يرجى المحاولة لاحقاً.";
       
       if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
-        errorMessage = "فشل الاتصال بالخادم. تأكد من توفر الإنترنت وأن الرابط " + apiUrl + " متاح حالياً.";
+        errorMessage = "فشل الاتصال بالخادم. تأكد من توفر الإنترنت وأن الرابط " + apiUrl + " متاح حالياً. (Network Error)";
       } else if (err.message) {
         errorMessage = err.message;
       }
       
       setResult({ 
         error: errorMessage, 
-        debug: err.stack || err.message 
+        debug: `URL: ${apiUrl} | Error: ${err.message} | Stack: ${err.stack || 'No stack'}`
       });
     } finally {
+      clearInterval(progressInterval);
       setLoading(false);
     }
   };
@@ -2913,7 +2822,7 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         animate={{ scale: 1, opacity: 1 }}
         className="w-full max-w-2xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh] relative"
       >
-        <div className="p-6 border-b flex justify-between items-center bg-green-50">
+        <div className="p-6 border-b flex justify-between items-center bg-green-50 z-20 relative">
           <div className="flex items-center space-x-reverse space-x-3">
             <Leaf className="text-green-600" size={24} />
             <h2 className="text-xl font-black text-green-900">طبيب زون الذكي</h2>
@@ -2923,7 +2832,7 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 relative">
           {!source && !image && !loading && !result && (
             <div className="grid grid-cols-2 gap-4">
               <button 
@@ -2960,72 +2869,294 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
           )}
 
           {loading && (
-            <div className="flex flex-col items-center justify-center py-12 space-y-4">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#2E7D32]"></div>
-              <p className="font-black text-[#2E7D32] animate-pulse">جاري التحليل بواسطة طبيب زون...</p>
+            <div className="flex flex-col items-center justify-center py-20 space-y-8 bg-white/50 backdrop-blur-sm rounded-[3rem] border border-green-100 shadow-xl mx-4">
+              <div className="relative w-40 h-40">
+                {/* Background Circle */}
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="transparent"
+                    className="text-green-100"
+                  />
+                  {/* Progress Circle */}
+                  <motion.circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="transparent"
+                    strokeDasharray={440}
+                    initial={{ strokeDashoffset: 440 }}
+                    animate={{ strokeDashoffset: 440 - (440 * progress) / 100 }}
+                    transition={{ duration: 0.5, ease: "linear" }}
+                    strokeLinecap="round"
+                    className="text-green-600"
+                  />
+                </svg>
+                {/* Percentage Center */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-black text-green-900">{Math.round(progress)}%</span>
+                  <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest mt-1">جاري التحليل</span>
+                </div>
+              </div>
+              
+              <div className="text-center space-y-2">
+                <p className="font-black text-green-900 text-xl animate-pulse">طبيب زون يفحص نبتتك الآن</p>
+                <p className="text-green-700/60 font-bold text-sm">ذكاء اصطناعي فائق السرعة والدقة</p>
+              </div>
+
+              {/* Animated Icons during loading */}
+              <div className="flex gap-4 opacity-40">
+                <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}><Leaf size={24} className="text-green-600" /></motion.div>
+                <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}><Sprout size={24} className="text-green-600" /></motion.div>
+                <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}><FlaskConical size={24} className="text-green-600" /></motion.div>
+              </div>
             </div>
           )}
-
+              
           {result && (
-            <div className="space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6 relative pb-12 w-full"
+            >
+              {/* Glowing Vibrant Green Background */}
+              <div className="absolute inset-x-[-1.5rem] inset-y-[-2rem] bg-[radial-gradient(circle_at_center,_#f0fdf4_0%,_#dcfce7_50%,_#bbf7d0_100%)] rounded-t-[4rem] z-0 shadow-inner" />
+              
+              {/* Floating Water Bubbles (Artistic Effect) */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-[5]">
+                {[...Array(40)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ 
+                      y: i > 25 ? "100%" : Math.random() * 100 + "%", 
+                      x: Math.random() * 100 + "%", 
+                      scale: Math.random() * 0.5 + 0.2, 
+                      opacity: Math.random() * 0.4 + 0.1 
+                    }}
+                    animate={{ 
+                      y: "-20%",
+                      x: (Math.random() * 100) + "%",
+                      opacity: [0, 0.4, 0]
+                    }}
+                    transition={{ 
+                      duration: Math.random() * 15 + 10, 
+                      repeat: Infinity, 
+                      ease: "linear",
+                      delay: Math.random() * 20
+                    }}
+                    className="absolute rounded-full bg-white border border-white/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)]"
+                    style={{ 
+                      width: Math.random() * 20 + 5 + 'px', 
+                      height: Math.random() * 20 + 5 + 'px',
+                      filter: 'blur(1px)'
+                    }}
+                  />
+                ))}
+              </div>
+              
+              {/* Dynamic Floral Frame (Artistic Border) */}
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10 overflow-hidden rounded-t-[4rem]">
+                {/* Corners */}
+                <motion.div animate={{ rotate: [0, 10, 0] }} transition={{ duration: 5, repeat: Infinity }} className="absolute -top-6 -right-6 text-pink-500/30 opacity-70"><Flower2 size={120} /></motion.div>
+                <motion.div animate={{ rotate: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity }} className="absolute -top-8 -left-8 text-rose-500/30 opacity-70"><Flower size={140} /></motion.div>
+                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 6, repeat: Infinity }} className="absolute bottom-20 -right-10 text-orange-500/20 opacity-60"><Flower2 size={160} /></motion.div>
+                <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 7, repeat: Infinity }} className="absolute bottom-10 -left-12 text-yellow-500/20 opacity-60"><Flower size={180} /></motion.div>
+                
+                {/* Edge Decorations (The Frame) */}
+                <div className="absolute top-1/4 -left-6 text-green-600/10"><Leaf size={40} className="rotate-45" /></div>
+                <div className="absolute top-2/4 -right-4 text-green-600/10"><LeafyGreen size={50} className="-rotate-12" /></div>
+                <div className="absolute top-10 right-1/4 text-pink-400/20"><Flower2 size={30} /></div>
+                <div className="absolute bottom-40 left-1/4 text-rose-400/20"><Flower size={40} /></div>
+              </div>
+
               {result.error ? (
-                <div className="p-8 bg-red-50 rounded-3xl border border-red-100 flex flex-col items-center text-center space-y-4">
-                  <AlertTriangle size={64} className="text-red-500" />
-                  <p className="font-black text-red-900 text-lg">{result.error}</p>
+                <div className="relative z-20 p-10 bg-white/60 backdrop-blur-md rounded-[3rem] border-2 border-red-100 flex flex-col items-center text-center space-y-6 shadow-2xl">
+                  <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
+                    <AlertTriangle size={48} className="text-red-500" />
+                  </div>
+                  <p className="font-black text-red-900 text-xl leading-relaxed">{result.error}</p>
                 </div>
               ) : (
-                <div className="space-y-6 text-right" dir="rtl">
-                  {/* السطر الأول: اسم النبات العلمي والسوداني */}
-                  {!result.isPlant ? (
-                    <div className="p-8 bg-amber-50 rounded-3xl border-2 border-amber-200 flex flex-col items-center text-center space-y-4">
-                      <Camera size={48} className="text-amber-500" />
-                      <p className="font-black text-amber-900 text-lg">
-                        عذراً، يبدو أن هذه الصورة لا تحتوي على نبات حقيقي. طبيب زون مصمم لتشخيص النباتات فقط.
-                      </p>
+                <div className="relative z-20 space-y-8 text-right" dir="rtl">
+                  {/* Image Display with High-End Frame */}
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="relative group h-72 sm:h-96"
+                  >
+                    <div className="absolute -inset-2 bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 rounded-[3rem] blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-[2.5rem] z-10" />
+                    <img src={image || ''} alt="Plant" className="relative w-full h-full object-cover rounded-[2.5rem] shadow-2xl border-4 border-white z-0" />
+                    <div className="absolute bottom-6 right-6 z-20">
+                      <div className="bg-white/95 backdrop-blur-lg px-6 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-green-100">
+                        <ImageIcon size={18} className="text-green-600" />
+                        <span className="text-green-900 font-black text-sm">عدسة طبيب زون</span>
+                      </div>
                     </div>
+                  </motion.div>
+
+                  {!result.isPlant ? (
+                    <motion.div 
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      className="p-10 bg-white/80 backdrop-blur-xl rounded-[3.5rem] border-2 border-amber-200 flex flex-col items-center text-center space-y-6 shadow-2xl"
+                    >
+                      <div className="w-24 h-24 bg-amber-50 rounded-[2rem] flex items-center justify-center rotate-6 transform shadow-inner">
+                        <Camera size={48} className="text-amber-500" />
+                      </div>
+                      <p className="font-black text-amber-900 text-2xl leading-loose">
+                        زارعنا الأصيل، عذراً..<br/>
+                        <span className="text-lg text-amber-700 font-bold block mt-3 bg-amber-100/50 p-4 rounded-2xl italic">هذه الصورة لا تنتمي لعالم النبات الجميل. يرجى تزويدي بصورة لنبتة حقيقية لأتمكن من مساعدتك.</span>
+                      </p>
+                    </motion.div>
                   ) : (
-                    <>
-                      <div className="p-5 bg-green-50 rounded-3xl border-2 border-green-200">
-                        <p className="text-center font-black text-green-900 text-xl leading-relaxed">
-                          نبات: <span className="text-green-700">{result.plantName?.replace('gtest锣mn', 'testData')}</span>
-                        </p>
-                      </div>
+                    <div className="space-y-10">
+                      {/* Artistic Name Card */}
+                      <motion.div 
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="bg-gradient-to-r from-emerald-600 to-green-700 p-10 rounded-[3.5rem] shadow-[0_20px_50px_rgba(5,150,105,0.3)] relative overflow-hidden group"
+                      >
+                        <div className="absolute -right-10 -bottom-10 opacity-20 group-hover:scale-125 group-hover:rotate-12 transition-all duration-1000">
+                          <Trees size={220} />
+                        </div>
+                        <div className="relative z-10">
+                          <h4 className="text-white/80 text-sm font-black mb-2 tracking-widest flex items-center gap-2">
+                             <div className="w-2 h-2 bg-yellow-400 rounded-full animate-ping" />
+                             تم التعرف على الكائن
+                          </h4>
+                          <p className="text-white text-4xl font-black leading-tight drop-shadow-sm">
+                            {result.plantName}
+                          </p>
+                        </div>
+                      </motion.div>
 
-                      <div className="relative w-full aspect-square rounded-3xl overflow-hidden shadow-lg border-2 border-green-100">
-                        <img src={image || ''} alt="Plant" className="w-full h-full object-contain" />
-                      </div>
+                      {/* Detailed Diagnosis Report */}
+                      <div className="space-y-8">
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.1 }}
+                          className={`p-10 rounded-[3.5rem] border shadow-2xl backdrop-blur-xl ${result.isHealthy ? 'bg-white/90 border-green-200' : 'bg-white/90 border-orange-200'}`}
+                        >
+                          <div className="flex items-center gap-6 mb-8 border-b border-gray-100 pb-6">
+                            <motion.div 
+                               animate={{ scale: [1, 1.1, 1] }}
+                               transition={{ duration: 2, repeat: Infinity }}
+                               className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-lg ${result.isHealthy ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}
+                            >
+                              {result.isHealthy ? <CheckCircle size={40} /> : <AlertTriangle size={40} />}
+                            </motion.div>
+                            <div>
+                                <h3 className="font-black text-3xl text-gray-900">{result.isHealthy ? 'صحة مثالية' : 'تحليل الإصابة'}</h3>
+                                <p className="text-green-600/70 text-sm font-black mt-1">تقرير مختبري ذكي • مباشر</p>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-[2.5rem] border border-gray-100 mb-8 shadow-inner">
+                             <p className="font-bold text-gray-800 text-xl leading-[2.2] text-justify">
+                               {result.isHealthy ? 'يا لجمال هذا النبات! لقد قمت بعمل رائع في العناية به، فهو يظهر حيوية فائقة وصحة لا تشوبها شائبة. استمر بهذا الشغف والاهتمام لتراه ينمو ويزدهر أكثر.' : result.diagnosis}
+                             </p>
+                          </div>
 
-                      <div className="space-y-4">
-                        <div className={`p-6 rounded-3xl border ${result.isHealthy ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100'}`}>
-                          <h3 className="font-black text-lg mb-2">{result.isHealthy ? '✅ حالة النبات' : '⚠️ تشخيص الإصابة'}</h3>
-                          <p className="font-bold text-gray-700">{result.isHealthy ? 'ألف مبروك النبات بصحة ممتازة وهو سليم' : (result.diagnosis?.replace('gtest锣mn', 'testData'))}</p>
                           {!result.isHealthy && (
-                            <div className="mt-4 space-y-2">
-                              <p className="text-sm font-bold"><span className="text-green-800">العلاج:</span> {result.generalMedicine?.replace('gtest锣mn', 'testData')}</p>
-                              <p className="text-sm font-bold"><span className="text-blue-800">البديل البلدي:</span> {result.localAlternative?.replace('gtest锣mn', 'testData')}</p>
+                            <div className="grid grid-cols-1 gap-6">
+                              <div className="bg-gradient-to-l from-emerald-50 to-white p-6 rounded-[2.5rem] border border-emerald-100 shadow-sm">
+                                <h5 className="font-black text-emerald-900 text-lg mb-3 flex items-center gap-3">
+                                  <FlaskConical size={24} className="text-emerald-500" /> وصفة الطبيب المختص
+                                </h5>
+                                <p className="text-gray-700 text-lg font-bold leading-relaxed pr-2">{result.generalMedicine}</p>
+                              </div>
+                              <div className="bg-gradient-to-l from-blue-50 to-white p-6 rounded-[2.5rem] border border-blue-100 shadow-sm">
+                                <h5 className="font-black text-blue-900 text-lg mb-3 flex items-center gap-3">
+                                  <Leaf size={24} className="text-blue-500" /> الحكمة التقليدية (البديل البلدي)
+                                </h5>
+                                <p className="text-gray-700 text-lg font-bold leading-relaxed pr-2">{result.localAlternative}</p>
+                              </div>
                             </div>
                           )}
-                        </div>
+                        </motion.div>
 
+                        {/* Staggered Royal Care Tips */}
                         {result.careTips && result.careTips.length > 0 && (
-                          <div className="space-y-2">
-                            <h4 className="font-black text-green-900 px-2">نصائح الرعاية:</h4>
-                            <div className="bg-white rounded-3xl border p-4 space-y-2">
+                          <div className="space-y-6">
+                            <h4 className="font-black text-gray-900 text-2xl px-6 flex items-center gap-4">
+                              <div className="w-3 h-10 bg-green-500 rounded-full" />
+                              روشتة العناية المنزلية
+                            </h4>
+                            <div className="grid grid-cols-1 gap-5">
                               {result.careTips.map((tip: string, i: number) => (
-                                <p key={i} className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                                  <span className="w-2 h-2 bg-green-500 rounded-full shrink-0" /> {tip?.replace('gtest锣mn', 'testData')}
-                                </p>
+                                <motion.div 
+                                  key={i}
+                                  initial={{ opacity: 0, x: -30 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: 0.3 + (i * 0.1) }}
+                                  className="bg-white/80 backdrop-blur-sm p-8 rounded-[2.5rem] border border-green-50 shadow-xl flex items-start gap-6 group hover:shadow-2xl hover:border-green-300 transition-all cursor-default"
+                                >
+                                  <div className="w-12 h-12 bg-green-500 text-white rounded-2xl flex items-center justify-center shrink-0 group-hover:rotate-[360deg] transition-transform duration-700 shadow-lg">
+                                    <LeafyGreen size={26} />
+                                  </div>
+                                  <p className="text-gray-800 font-bold text-lg leading-relaxed">{tip}</p>
+                                </motion.div>
                               ))}
                             </div>
                           </div>
                         )}
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
-              <button onClick={() => { setImage(null); setResult(null); setSource(null); }} className="w-full h-14 bg-green-600 text-white rounded-2xl font-black shadow-lg">تشخيص جديد</button>
-            </div>
+              
+              <div className="relative z-10 pt-4 pb-10">
+                {/* Specific Bottom Bubble Burst */}
+                <div className="absolute inset-x-0 bottom-0 h-40 pointer-events-none z-0 overflow-hidden">
+                  {[...Array(15)].map((_, i) => (
+                    <motion.div
+                      key={`bottom-b-${i}`}
+                      initial={{ y: 100, x: (20 + Math.random() * 60) + "%", opacity: 0 }}
+                      animate={{ 
+                        y: [-20, -150], 
+                        opacity: [0, 0.5, 0],
+                        scale: [0.5, 1.2]
+                      }}
+                      transition={{ 
+                        duration: 3 + Math.random() * 4, 
+                        repeat: Infinity, 
+                        delay: Math.random() * 5 
+                      }}
+                      className="absolute w-4 h-4 rounded-full bg-white/40 border border-white/60 blur-[1px]"
+                    />
+                  ))}
+                </div>
+                
+                <button 
+                  onClick={() => { setImage(null); setResult(null); setSource(null); }} 
+                  className="w-full h-16 bg-gray-900 text-white rounded-[2rem] font-black shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 overflow-hidden group"
+                >
+                  <RefreshCw size={24} className="group-hover:rotate-180 transition-transform duration-700" />
+                  <span className="text-lg">فحص نبات آخر</span>
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </div>
+
+              {/* Bottom Decoration */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-32 opacity-20 pointer-events-none">
+                 <div className="flex justify-center items-end gap-8 h-full">
+                    <Trees size={64} className="text-green-800" />
+                    <Flower2 size={48} className="text-pink-600" />
+                    <Trees size={80} className="text-green-900" />
+                    <Flower2 size={42} className="text-pink-400" />
+                    <Trees size={64} className="text-green-800" />
+                 </div>
+              </div>
+            </motion.div>
           )}
         </div>
         <canvas ref={canvasRef} className="hidden" />
@@ -3294,6 +3425,8 @@ export default function App() {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const isProductView = (currentLevel >= 3) || (searchQuery.trim() !== '');
 
   const paidApiKey = useMemo(() => {
     if (data.length === 0) return null;
@@ -4231,7 +4364,7 @@ export default function App() {
         </header>
 
           {/* Scrollable Main Content */}
-          <div id="main-content" className="flex-1 overflow-y-auto relative no-scrollbar bg-[#F6F6F8]">
+          <div id="main-content" className={`flex-1 overflow-y-auto relative no-scrollbar transition-colors duration-500 ${isProductView ? 'bg-[#0a192f]' : 'bg-[#F6F6F8]'}`}>
           
           {/* Sticky Massive Invoice Button - Frozen at top below header */}
           {cart.length > 0 && (
@@ -4350,8 +4483,15 @@ export default function App() {
           </AnimatePresence>
 
           {/* Main Grid with Slide Animation */}
-          <main className="flex-1 px-4 relative z-10 overflow-hidden bg-[#F6F6F8]">
-            {/* Background pattern removed per user request */}
+          <main className={`flex-1 px-4 relative z-10 overflow-hidden transition-colors duration-500 ${isProductView ? 'bg-[#0a192f]' : 'bg-transparent'}`}>
+            {/* Glowing Light Effects */}
+            {isProductView && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute top-1/4 -left-20 w-80 h-80 bg-blue-400/20 rounded-full blur-[100px] animate-pulse" />
+                <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.1)_0%,_transparent_70%)]" />
+              </div>
+            )}
 
             {loading && data.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[50vh] relative z-20">
@@ -4359,16 +4499,18 @@ export default function App() {
                   animate={{ 
                     scale: [1, 1.1, 1],
                     rotate: [0, 5, -5, 0],
-                    filter: ["drop-shadow(0 0 10px rgba(183, 28, 28, 0.4))", "drop-shadow(0 0 30px rgba(183, 28, 28, 0.8))", "drop-shadow(0 0 10px rgba(183, 28, 28, 0.4))"]
+                    filter: isProductView 
+                      ? ["drop-shadow(0 0 10px rgba(59, 130, 246, 0.4))", "drop-shadow(0 0 30px rgba(59, 130, 246, 0.8))", "drop-shadow(0 0 10px rgba(59, 130, 246, 0.4))"]
+                      : ["drop-shadow(0 0 10px rgba(59, 130, 246, 0.2))", "drop-shadow(0 0 30px rgba(59, 130, 246, 0.4))", "drop-shadow(0 0 10px rgba(59, 130, 246, 0.2))"]
                   }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-[2.5rem] border-2 border-white/20 p-4 shadow-2xl relative overflow-hidden flex items-center justify-center"
+                  className={`w-32 h-32 backdrop-blur-md rounded-[2.5rem] border-2 shadow-2xl relative overflow-hidden flex items-center justify-center ${isProductView ? 'bg-white/20 border-white/30' : 'bg-white border-green-100'}`}
                 >
-                  <img src="https://i.ibb.co/qFgDcx2b/logo.png" className="w-full h-full object-contain" alt="loading" />
+                  <img src="https://i.ibb.co/qFgDcx2b/logo.png" className={`w-full h-full object-contain transition-all ${isProductView ? 'brightness-0 invert' : ''}`} alt="loading" />
                   <motion.div 
                     animate={{ rotate: 360 }}
                     transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-0 border-t-4 border-red-600 rounded-full"
+                    className={`absolute inset-0 border-t-4 rounded-full ${isProductView ? 'border-blue-400' : 'border-green-600'}`}
                     style={{ margin: '-4px' }}
                   />
                 </motion.div>
@@ -4377,13 +4519,13 @@ export default function App() {
                   transition={{ duration: 1.5, repeat: Infinity }}
                   className="mt-8 text-center"
                 >
-                  {data.length === 0 && <span className="text-red-800 font-black text-xl tracking-[0.2em] drop-shadow-sm">جاري التحديث الذكي...</span>}
-                  {data.length === 0 && <p className="text-gray-500 font-bold text-xs mt-2 italic">نحن نقوم بجلب أفضل الشتلات والمنتجات لك</p>}
+                  {data.length === 0 && <span className={`font-black text-xl tracking-[0.2em] drop-shadow-lg ${isProductView ? 'text-blue-100' : 'text-green-900'}`}>جاري التحديث الذكي...</span>}
+                  {data.length === 0 && <p className={`font-bold text-xs mt-2 italic ${isProductView ? 'text-blue-300/60' : 'text-gray-400'}`}>نحن نقوم بجلب أفضل الشتلات والمنتجات لك</p>}
                   <motion.p 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 10 }}
-                    className="text-red-600/60 font-bold text-[10px] mt-4"
+                    className={`font-bold text-[10px] mt-4 ${isProductView ? 'text-blue-400/60' : 'text-gray-400'}`}
                   >
                     يبدو أن الاتصال بطيء، جاري المحاولة مرة أخرى...
                   </motion.p>
@@ -4391,11 +4533,11 @@ export default function App() {
               </div>
             ) : networkError && data.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[50vh] relative z-20 px-6 text-center">
-                <div className="w-24 h-24 bg-red-100 rounded-3xl flex items-center justify-center mb-6">
-                  <AlertTriangle size={48} className="text-red-600" />
+                <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-6 border ${isProductView ? 'bg-red-500/20 backdrop-blur-md border-red-500/30' : 'bg-red-50 border-red-100'}`}>
+                  <AlertTriangle size={48} className={isProductView ? "text-red-400" : "text-red-600"} />
                 </div>
-                <h2 className="text-2xl font-black text-red-800 mb-2">عذراً، فشل تحديث البيانات</h2>
-                <p className="text-gray-600 font-bold mb-8 max-w-sm">{networkError}</p>
+                <h2 className={`text-2xl font-black mb-2 ${isProductView ? 'text-white' : 'text-red-800'}`}>عذراً، فشل تحديث البيانات</h2>
+                <p className={`font-bold mb-8 max-w-sm ${isProductView ? 'text-blue-100/70' : 'text-gray-600'}`}>{networkError}</p>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -4404,12 +4546,12 @@ export default function App() {
                     setLoading(true);
                     window.location.reload(); 
                   }}
-                  className="px-10 py-4 bg-red-700 text-white rounded-2xl font-black shadow-xl flex items-center gap-3"
+                  className={`px-10 py-4 rounded-2xl font-black shadow-2xl flex items-center gap-3 border-b-4 ${isProductView ? 'bg-blue-600 text-white border-blue-900' : 'bg-red-700 text-white border-red-900'}`}
                 >
                   <RefreshCw size={24} className={loading ? "animate-spin" : ""} />
                   <span>{loading ? "جاري التحديث..." : "إعادة المحاولة الآن"}</span>
                 </motion.button>
-                <p className="mt-6 text-[10px] text-gray-400 font-bold">تأكد من اتصالك بالإنترنت وحاول مرة أخرى</p>
+                <p className={`mt-6 text-[10px] font-bold uppercase tracking-wider ${isProductView ? 'text-blue-200/50' : 'text-gray-400'}`}>تأكد من اتصالك بالإنترنت وحاول مرة أخرى</p>
               </div>
             ) : (
               <AnimatePresence mode="wait">
@@ -4480,40 +4622,40 @@ export default function App() {
 
           {/* قسم رابط الموقع الإلكتروني والجهة المطورة - يظهر فقط عند وجود بيانات */}
           {((websiteUrl && websiteUrl.startsWith('http')) || footerLine1 || footerLine2) && (
-            <div className="w-full px-6 py-4 flex flex-col items-center space-y-2 bg-gradient-to-t from-green-50/50 to-transparent">
+            <div className={`w-full px-6 py-4 flex flex-col items-center space-y-2 relative z-10 transition-all duration-500 ${isProductView ? 'bg-gradient-to-t from-[#050c18] to-transparent' : 'bg-gradient-to-t from-gray-200/50 to-transparent'}`}>
               
               {websiteUrl && websiteUrl.startsWith('http') && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => window.open(websiteUrl, '_blank')}
-                  className="w-full max-w-md h-20 p-4 bg-white border-2 border-green-50 rounded-[2.5rem] shadow-xl flex items-center gap-4 group transition-all"
+                  className={`w-full max-w-md h-20 p-4 border-2 rounded-[2.5rem] shadow-2xl flex items-center gap-4 group transition-all backdrop-blur-md ${isProductView ? 'bg-white/10 border-white/10' : 'bg-white border-green-50'}`}
                 >
-                  <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-inner">
-                    <Globe size={24} className="text-green-700" />
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-inner ${isProductView ? 'bg-blue-500/20' : 'bg-green-50'}`}>
+                    <Globe size={24} className={isProductView ? "text-blue-300" : "text-green-700"} />
                   </div>
                   <div className="text-right flex-1">
-                    <p className="text-xs font-black text-green-800">تفضلوا بزيارة موقعنا الرسمي</p>
-                    <p className="text-[10px] text-gray-400 font-bold tracking-wider">
+                    <p className={`text-xs font-black ${isProductView ? 'text-white' : 'text-green-800'}`}>تفضلوا بزيارة موقعنا الرسمي</p>
+                    <p className={`text-[10px] font-bold tracking-wider ${isProductView ? 'text-blue-300/60' : 'text-gray-400'}`}>
                       {(() => {
                         try { return new URL(websiteUrl).hostname.replace('www.', ''); }
                         catch { return websiteUrl; }
                       })()}
                     </p>
                   </div>
-                  <ExternalLink size={16} className="text-gray-300 ml-2" />
+                  <ExternalLink size={16} className={isProductView ? "text-white/30 ml-2" : "text-gray-300 ml-2"} />
                 </motion.button>
               )}
 
               {/* قسم المطور والمعلومات الإضافية من جدول البيانات */}
-              <div className="text-center space-y-2 px-4">
+              <div className="text-center space-y-2 px-4 pb-8">
                 {footerLine1 && (
-                  <p className="text-gray-600 text-[13px] font-black leading-relaxed">
+                  <p className={`text-[13px] font-black leading-relaxed drop-shadow-md ${isProductView ? 'text-blue-100' : 'text-gray-600'}`}>
                     {footerLine1}
                   </p>
                 )}
                 {footerLine2 && (
-                  <p className="text-gray-400 text-[11px] font-bold italic leading-relaxed">
+                  <p className={`text-[11px] font-bold italic leading-relaxed ${isProductView ? 'text-blue-300/60' : 'text-gray-400'}`}>
                     {footerLine2}
                   </p>
                 )}

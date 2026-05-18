@@ -28,28 +28,32 @@ app.post("/api/plant/diagnose", async (req, res) => {
     }
 
     const prompt = `
-أنت خبير علم النبات وعالم زراعي متخصص. قم بتحليل هذه الصورة بدقة متناهية:
-1. تحقق أولاً وتأكد تماماً: هل هذه الصورة تحتوي على نبات حقيقي؟ 
-2. إذا كانت الصورة لشيء آخر، يجب أن تضع قيمة الحقل "isPlant" إلى false.
-3. إذا كانت الصورة لنبات، قم بالتعرف على نوعه وفحص حالته.
+أنت خبير زراعي عالمي ومستشار مختص في تشخيص أمراض النباتات. 
+مهمتك هي تحليل الصورة المرفقة وتقديم تقرير مفصل جداً بأسلوب "بشري" ودود ومهني، وكأنك تتحدث مباشرة مع المزارع لتنصحه.
 
-أريد الرد حصراً بتنسيق JSON وبالمواصفات التالية:
+التعليمات الهامة جداً لضمان الجودة:
+1. الشخصية والأسلوب: تحدث كبشر، استخدم عبارات تشجيعية متنوعة. لا تكرر نفس الجمل الافتتاحية في كل تشخيص. إذا كان النبات سليماً، عبر عن سعادتك بأساليب مختلفة ومبتكرة في كل مرة.
+2. الطول والتفصيل: يجب أن يكون حقل "diagnosis" وحقل "careTips" مفصلين وشاملين. لا تقبل بأقل من 5 أسطر من المعلومات المفيدة والدقيقة والوصف المستفيض في كل تقرير.
+3. المرونة التامة: إذا كانت الصورة تحتوي على أي جزء من نبات (حتى لو كانت الجودة ضعيفة أو الصورة بعيدة أو مشوشة أو الخلفية مزدحمة)، فيجب أن تعتبره نباتاً وتجتهد في التشخيص. لا ترفض الصورة إلا إذا كانت خالية تماماً من أي مظهر نباتي.
+4. اللغة: يجب أن يكون الرد باللغة العربية الفصحى البسيطة والودودة. يمنع منعاً باتاً استخدام أي لغات أخرى (مثل الصينية أو الإنجليزية) داخل الحقول النصية.
+5. الري: لا تحدد عدداً ثابتاً للأيام، بل اربط الري دائماً بحس جفاف التربة (مثلاً: "تلمس التربة بإصبعك، إذا وجدت أول 2-3 سم جافة، فهذا هو الوقت المثالي للري").
+
+يجب أن يكون الرد حصراً بتنسيق JSON كما يلي:
 {
   "isPlant": boolean,
-  "plantName": "اسم النبات (علمي وشائع)",
-  "isHealthy": boolean, 
-  "diagnosis": "التشخيص باللغة العربية",
-  "generalMedicine": "العلاج المقترح",
-  "localAlternative": "وصفة طبيعية",
-  "careTips": ["نصائح رعاية"]
+  "plantName": "اسم النبات الشائع والعلمي باللغة العربية",
+  "isHealthy": boolean,
+  "diagnosis": "تقرير مفصل وشامل (لا يقل عن 5 أسطر) يصف الحالة الصحية بأسلوب بشري مستفيض وغير مكرر",
+  "generalMedicine": "اسم العلاج الكيماوي أو المبيد المقترح أو وسيلة الوقاية بدقة",
+  "localAlternative": "علاج طبيعي أو وصفة بلدية (مثل الرماد أو الصابون أو الثوم)",
+  "careTips": ["نصيحة لرعاية النبات تفصيلية 1", "نصيحة لرعاية النبات تفصيلية 2", "نصيحة لرعاية النبات تفصيلية 3"]
 }
-لا تذكر أي نص خارج ملف JSON.
 `;
 
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "qwen/qwen-2-vl-72b-instruct",
+        model: "google/gemini-2.0-flash-001", 
         messages: [
           {
             role: "user",
@@ -64,38 +68,46 @@ app.post("/api/plant/diagnose", async (req, res) => {
             ],
           },
         ],
+        temperature: 0.1,
+        max_tokens: 1000,
         response_format: { type: "json_object" }
       },
       {
         headers: {
           Authorization: `Bearer ${openRouterKey}`,
-          "HTTP-Referer": "https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app", // Use your app URL
+          "HTTP-Referer": "https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app",
           "X-Title": "Zone Agribusiness App",
           "Content-Type": "application/json",
         },
       }
     );
 
+    if (!response.data || !response.data.choices || response.data.choices.length === 0) {
+      console.error("OpenRouter Empty Response:", response.data);
+      throw new Error("لم يتم استلام رد من خادم الذكاء الاصطناعي.");
+    }
+
     const result = response.data.choices[0].message.content;
     
     try {
-      // Clean potential markdown or extra text from AI response
-      let cleanedJson = result;
-      if (result.includes('```')) {
-        const match = result.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (match) cleanedJson = match[1];
-      }
-      cleanedJson = cleanedJson.trim();
-      
-      const diagnosisJson = JSON.parse(cleanedJson);
+      const diagnosisJson = JSON.parse(result);
       res.json(diagnosisJson);
     } catch (e) {
-      console.error("JSON Parse Error:", result);
+      console.error("JSON Parse Error. Result was:", result);
       res.status(500).json({ error: "فشل في معالجة إجابة الذكاء الاصطناعي. يرجى المحاولة مرة أخرى." });
     }
   } catch (error: any) {
-    console.error("OpenRouter Error:", error.response?.data || error.message);
-    res.status(500).json({ error: error.response?.data?.error?.message || "Failed to diagnose plant" });
+    const errorData = error.response?.data;
+    console.error("OpenRouter Error Details:", JSON.stringify(errorData || error.message));
+    
+    let errorMessage = "فشل في تشخيص النبات. يرجى المحاولة لاحقاً.";
+    if (errorData?.error?.message) {
+      errorMessage = `خطأ من الخادم: ${errorData.error.message}`;
+    } else if (error.message) {
+      errorMessage = `خطأ في الاتصال: ${error.message}`;
+    }
+    
+    res.status(500).json({ error: errorMessage });
   }
 });
 
