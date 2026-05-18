@@ -3,9 +3,19 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import axios from "axios";
 import cors from "cors";
+import multer from "multer";
 
 const app = express();
 const PORT = 3000;
+
+// Configure multer for memory storage
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { 
+    fileSize: 15 * 1024 * 1024, // 15MB limit for files
+    fieldSize: 15 * 1024 * 1024 // 15MB limit for text fields (Base64 strings)
+  }
+});
 
 // Enable CORS for mobile apps
 app.use(cors());
@@ -13,10 +23,19 @@ app.use(cors());
 // Middleware for parsing JSON with a larger limit for images
 app.use(express.json({ limit: '10mb' }));
 
-// AI Diagnosis API Handler (Using OpenRouter + Qwen VL Max)
-app.post("/api/plant/diagnose", async (req, res) => {
+// AI Diagnosis API Handler (Handing both JSON and Multipart)
+app.post("/api/plant/diagnose", upload.single('image'), async (req, res) => {
   try {
-    const { image, apiKey } = req.body;
+    let image = req.body.image;
+    const apiKey = req.body.apiKey;
+
+    // If file was uploaded via FormData
+    if (req.file) {
+      const base64 = req.file.buffer.toString('base64');
+      const mimeType = req.file.mimetype || 'image/jpeg';
+      image = `data:${mimeType};base64,${base64}`;
+    }
+
     if (!image) {
       return res.status(400).json({ error: "Image is required" });
     }

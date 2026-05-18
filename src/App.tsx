@@ -2566,13 +2566,24 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         const photo = await CapacitorCamera.getPhoto({
           quality: 90,
           allowEditing: false,
-          resultType: CameraResultType.DataUrl,
+          resultType: CameraResultType.Uri,
           source: CapacitorCameraSource.Camera
         });
-        if (photo.dataUrl) {
-          setImage(photo.dataUrl);
+        if (photo.webPath) {
+          setImage(photo.webPath);
           setSource(null);
-          analyzeImage(photo.dataUrl);
+          try {
+            const res = await fetch(photo.webPath);
+            const blob = await res.blob();
+            analyzeImage(blob);
+          } catch (e) {
+            console.error("Blob conversion error:", e);
+            // Fallback to dataUrl if blob fetch fails
+            const dataUrlRes = await CapacitorCamera.getPhoto({
+              quality: 90, resultType: CameraResultType.DataUrl, source: CapacitorCameraSource.Camera
+            });
+            if (dataUrlRes.dataUrl) analyzeImage(dataUrlRes.dataUrl);
+          }
         }
       } catch (err: any) {
         console.error("Capacitor camera error:", err);
@@ -2637,10 +2648,15 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         canvasRef.current.width = videoRef.current.videoWidth;
         canvasRef.current.height = videoRef.current.videoHeight;
         context.drawImage(videoRef.current, 0, 0);
-        const dataUrl = canvasRef.current.toDataURL('image/jpeg');
+        const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.9);
         setImage(dataUrl);
         setSource(null);
-        analyzeImage(dataUrl);
+        
+        // Convert canvas to blob for analysis
+        canvasRef.current.toBlob((blob) => {
+          if (blob) analyzeImage(blob);
+          else analyzeImage(dataUrl);
+        }, 'image/jpeg', 0.9);
       }
     }
   };
@@ -2660,15 +2676,18 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         const photo = await CapacitorCamera.getPhoto({
           quality: 80,
           allowEditing: false,
-          resultType: CameraResultType.DataUrl,
+          resultType: CameraResultType.Uri,
           source: CapacitorCameraSource.Camera,
           width: 1024,
           correctOrientation: true
         });
-        if (photo.dataUrl) {
-          setImage(photo.dataUrl);
+        
+        if (photo.webPath) {
+          setImage(photo.webPath);
           setSource(null);
-          analyzeImage(photo.dataUrl);
+          const response = await fetch(photo.webPath);
+          const blob = await response.blob();
+          analyzeImage(blob);
         }
       } catch (err) {
         console.error("Capacitor camera error:", err);
@@ -2691,15 +2710,18 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
         const photo = await CapacitorCamera.getPhoto({
           quality: 80,
           allowEditing: false,
-          resultType: CameraResultType.DataUrl,
+          resultType: CameraResultType.Uri,
           source: CapacitorCameraSource.Photos,
           width: 1024,
           correctOrientation: true
         });
-        if (photo.dataUrl) {
-          setImage(photo.dataUrl);
+        
+        if (photo.webPath) {
+          setImage(photo.webPath);
           setSource(null);
-          analyzeImage(photo.dataUrl);
+          const response = await fetch(photo.webPath);
+          const blob = await response.blob();
+          analyzeImage(blob);
         }
       } catch (err) {
         console.error("Capacitor gallery error:", err);
@@ -2714,12 +2736,11 @@ const PlantDiagnosis = ({ isOpen, onClose, paidApiKey, openRouterKey }: { isOpen
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        setImage(dataUrl);
+        setImage(reader.result as string);
         setSource(null);
-        analyzeImage(dataUrl);
       };
       reader.readAsDataURL(file);
+      analyzeImage(file);
     }
   };
 
@@ -2747,7 +2768,7 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
   }
 };
 
-  const analyzeImage = async (base64Image: string) => {
+  const analyzeImage = async (imageInput: string | Blob) => {
     setLoading(true);
     setProgress(0);
     setResult(null);
@@ -2757,7 +2778,6 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 98) return prev; // Hold at 98 until real response
-        // Faster jump at start, then slow down
         const jump = prev < 30 ? (Math.random() * 20 + 5) : (Math.random() * 3 + 1);
         return Math.min(prev + jump, 98);
       });
@@ -2765,27 +2785,46 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
     
     try {
       let data;
-      if (Capacitor.isNativePlatform()) {
-        const response = await CapacitorHttp.post({
-          url: apiUrl,
-          headers: { 'Content-Type': 'application/json' },
-          data: { image: base64Image, apiKey: openRouterKey || paidApiKey },
-          connectTimeout: 60000,
-          readTimeout: 60000
-        });
-        data = response.data;
-        if (response.status < 200 || response.status >= 300) {
-          throw new Error(data.error || `Error: ${response.status}`);
+      const apiKey = openRouterKey || paidApiKey;
+
+      // Prepare data for transmission (Fixed for Android Release APK)
+      if (imageInput instanceof Blob || Capacitor.isNativePlatform()) {
+        const formData = new FormData();
+        
+        if (imageInput instanceof Blob) {
+          formData.append('image', imageInput, 'plant_image.jpeg');
+        } else {
+          try {
+            // التحويل البرمجي للمسار النصي أو Base64 إلى Blob مادي لضمان وصوله للسيرفر
+            const blobRes = await fetch(imageInput);
+            const blob = await blobRes.blob();
+            formData.append('image', blob, 'plant_image.jpeg');
+          } catch (e) {
+            console.error("Binary conversion failed, fallback to text:", e);
+            formData.append('image', imageInput);
+          }
         }
-      } else {
+        
+        if (apiKey) formData.append('apiKey', apiKey);
+
         const response = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Image, apiKey: openRouterKey || paidApiKey })
+          body: formData
         });
         
         data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
+        }
+      } else {
+        // Standard JSON fetch for web-only or other cases
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: imageInput, apiKey: apiKey })
+        });
         
+        data = await response.json();
         if (!response.ok) {
           throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
         }
