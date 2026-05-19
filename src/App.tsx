@@ -2096,7 +2096,7 @@ const CachedImage = ({ src, alt, className, style, referrerPolicy }: { src: stri
     <motion.img 
       whileHover={{ scale: 1.1 }}
       transition={{ duration: 0.8 }}
-      src={finalSrc} 
+      src={Capacitor.convertFileSrc(finalSrc)} 
       alt={alt} 
       className={className}
       style={style}
@@ -3092,7 +3092,7 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
                   >
                     <div className="absolute -inset-2 bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 rounded-[3rem] blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-[2.5rem] z-10" />
-                    <img src={image || ''} alt="Plant" className="relative w-full h-full object-cover rounded-[2.5rem] shadow-2xl border-4 border-white z-0" />
+                    <img src={image ? Capacitor.convertFileSrc(image) : ''} alt="Plant" className="relative w-full h-full object-cover rounded-[2.5rem] shadow-2xl border-4 border-white z-0" />
                     <div className="absolute bottom-6 right-6 z-20">
                       <div className="bg-white/95 backdrop-blur-lg px-6 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-green-100">
                         <ImageIcon size={18} className="text-green-600" />
@@ -4793,7 +4793,7 @@ export default function App() {
               className="relative max-w-full max-h-full flex flex-col items-center"
             >
               <motion.img
-                src={zoomedImage}
+                src={zoomedImage ? Capacitor.convertFileSrc(zoomedImage) : ''}
                 alt="Zoomed"
                 className="max-w-full max-h-[75vh] object-contain rounded-[3rem] shadow-[0_0_100px_rgba(255,255,255,0.2)] border-8 border-white/10"
                 animate={{ rotate: 360 }}
