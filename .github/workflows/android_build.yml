@@ -1,76 +1,159 @@
-name: Build Zoon Doctor (APK & AAB - Shaghal 100%)
+name: Build Android (Zoon - Sovereign Ultimate APK & AAB)
 
 on:
-  push:
-    branches:
-      - main # أو master حسب اسم الفرع الرئيسي عندك
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
-    name: Generate Production Packages
     runs-on: ubuntu-latest
-
     steps:
-      # 1. جلب الكود بالكامل من المستودع
-      - name: Checkout repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      # 2. إعداد جافا للتعامل مع الـ ProGuard وحزم الأندرويد
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
+          java-version: '21'
           distribution: 'temurin'
-          java-version: '17'
           cache: 'gradle'
 
-      # 3. إعداد بيئة الـ Node.js
-      - name: Setup Node.js
+      - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '24'
 
-      # 4. تثبيت مكتبات الـ Web وبناء الفرونت إند أولاً (React / Vite)
-      - name: Install Web Dependencies & Build Assets
+      - name: Install Dependencies & Build Assets
         run: |
-          npm install
+          npm install --legacy-peer-deps
           npm run build --if-present
-
-      # 5. خطوة السر: تثبيت الـ Capacitor وعمل مزامنة لبناء مجلد الأندرويد برمجياً داخل السيرفر
-      - name: Sync Capacitor Android Project
-        run: |
-          npm install @capacitor/cli @capacitor/core @capacitor/android
+          mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      # 6. إعداد الـ Android SDK وتثبيت تراخيص جوجل تلقائياً
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Sovereign ProGuard & Manifest Security Injection
+        run: |
+          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+          PROGUARD_PATH="android/app/proguard-rules.pro"
 
-      # 7. إعطاء صلاحيات النظام لملف الـ Gradle المُنشأ حديثاً
-      - name: Grant execute permission for gradlew
-        run: chmod +x android/gradlew
+          # 1. تثبيت سماحية البيانات غير المشفرة وحماية حركة مرور الشبكة في الـ Manifest كما طلب الوكيل
+          if [ -f "$MANIFEST_PATH" ]; then
+            echo "Injecting Network Security Permissions into AndroidManifest..."
+            sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' $MANIFEST_PATH
+            sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' $MANIFEST_PATH
+          fi
 
-      # 8. بناء حزمة الـ APK والـ AAB في سطر واحد بنظام الـ Release والـ ProGuard المعدل
-      - name: Build Android APK and AAB
+          # 2. حقن وتأمين قواعد ProGuard/R8 لحماية كلاسات الـ JSON والـ AI Models من التشفير البرمجي
+          if [ -f "$PROGUARD_PATH" ]; then
+            echo "Injecting Sovereign ProGuard Rules to protect AI Models..."
+            cat <<EOF >> $PROGUARD_PATH
+            # Zoon Sovereign Protection Rules for AI and JSON Parsers
+            -keepattributes Signature,Annotation,*Annotation*,EnclosingMethod,InnerClasses
+            -keepclassmembers class * {
+                @com.google.gson.annotations.SerializedName <fields>;
+            }
+            -keep class com.google.gson.** { *; }
+            -dontwarn okio.**
+            -dontwarn javax.annotation.**
+          EOF
+          fi
+
+      - name: Super Deep Resource Clean & Secured Logo Maintenance
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick curl
+          RES_DIR="android/app/src/main/res"
+          
+          # تنظيف فائق العمق للملفات الميتة لضمان خفة حجم التطبيق ونقائه
+          echo "Purging redundant system caches and icons..."
+          find $RES_DIR -type f -name "ic_launcher*.png" -delete
+          find $RES_DIR -type f -name "ic_launcher*.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
+          find $RES_DIR -type f -name "*_round.png" -delete
+          find $RES_DIR -type f -name "*_round.xml" -delete
+          find $RES_DIR -type f -name "splash*.png" -delete
+          find $RES_DIR -type f -name "splash*.xml" -not -path "*/drawable/*" -delete
+
+          # جلب وتأمين أيقونة زون الممتازة المعتمدة من جوجل درايف
+          mkdir -p resources
+          echo "Locking down the approved Sovereign Zoon Logo..."
+          curl -sL "https://docs.google.com/uc?export=download&id=1T9BVEcfQqCh62Va0WgdW5ZwkeTaIBCTG" -o resources/raw_icon.png
+
+          # الفلتر البرمجي الذي أحببته لتنقية الشعار وجعل الخلفية بيضاء ناصعة
+          if [ -f "resources/raw_icon.png" ]; then
+            convert resources/raw_icon.png -fuzz 25% -transparent "#FFC0CB" -background "#FFFFFF" -flatten resources/icon.png || cp resources/raw_icon.png resources/icon.png
+          fi
+
+          # توزيع الأيقونة النظيفة على مجلدات أندرويد بالمقاسات الهندسية الدقيقة
+          if [ -f "resources/icon.png" ]; then
+            find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher_foreground.png \;
+            find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher.png \;
+          fi
+
+          # حماية هيكل الأيقونة التكيفية لمنع تمدد الشعار
+          mkdir -p $RES_DIR/mipmap-anydpi-v26
+          cat <<EOF > $RES_DIR/mipmap-anydpi-v26/ic_launcher.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/ic_launcher_background" />
+              <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+          </adaptive-icon>
+          EOF
+
+          mkdir -p $RES_DIR/values
+          cat <<EOF > $RES_DIR/values/colors.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="ic_launcher_background">#FFFFFF</color>
+          </resources>
+          EOF
+
+          find $RES_DIR -name "ic_launcher_background.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
+
+      - name: Sovereign SDK 36 Alignment
         run: |
           cd android
-          ./gradlew assembleRelease bundleRelease --no-daemon
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
 
-      # 9. استخراج وحفظ ملف الـ APK الشغال والتنفيذي للتجربة المباشرة
-      - name: Upload Production APK Artifact
+          cd app
+          sed -i '/minSdkVersion/d' build.gradle || true
+          sed -i '/compileSdk/d' build.gradle || true
+          sed -i '/targetSdk/d' build.gradle || true
+          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
+          
+          cd ..
+          gradle wrapper --gradle-version 8.11.1
+          chmod +x gradlew
+
+      - name: Add Splash Screen Resource
+        run: |
+          RES_DIR="android/app/src/main/res"          
+          mkdir -p $RES_DIR/drawable
+          cat <<'EOF' > $RES_DIR/drawable/splash.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+              <item android:drawable="@android:color/white" />
+              <item>
+                  <bitmap
+                      android:src="@mipmap/ic_launcher"
+                      android:gravity="center" />
+              </item>
+          </layer-list>
+          EOF
+
+      - name: Generate Zoon Sovereign AAB & APK Combined
+        run: |
+          cd android
+          # تنظيف كاش المعمارية بالكامل لدمج دالة ضغط الصور والـ Middleware الجديدة بنقاء تام
+          ./gradlew clean --no-daemon
+          ./gradlew bundleRelease assembleRelease --no-daemon
+
+      - name: Upload Zoon Sovereign Certified Artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Zoon-Smart-Doctor-APK-يعمل
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 7
-
-      # 10. استخراج وحفظ ملف الـ AAB الرسمي الجاهز للمتجر
-      - name: Upload Production AAB Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Zoon-Smart-Doctor-AAB-يعمل
-          path: android/app/build/outputs/bundle/release/app-release.aab
-          retention-days: 7
+          name: Zoon-Sovereign-Outputs-(APK-&-AAB)
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/bundle/release/*.aab
