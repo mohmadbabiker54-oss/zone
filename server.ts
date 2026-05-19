@@ -24,7 +24,19 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // AI Diagnosis API Handler (Handing both JSON and Multipart)
-app.post("/api/plant/diagnose", upload.single('image'), async (req, res) => {
+app.post("/api/plant/diagnose", (req, res, next) => {
+  upload.single('image')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      // A Multer error occurred when uploading.
+      return res.status(400).json({ error: `خطأ في تحميل الصورة: ${err.message}` });
+    } else if (err) {
+      // An unknown error occurred when uploading.
+      return res.status(500).json({ error: `حدث خطأ غير متوقع: ${err.message}` });
+    }
+    // Everything went fine.
+    next();
+  });
+}, async (req, res) => {
   try {
     let image = req.body.image;
     const apiKey = req.body.apiKey;

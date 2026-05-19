@@ -2792,10 +2792,11 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         const formData = new FormData();
         
         if (imageInput instanceof Blob) {
+          // تأكد من حقن الـ Blob مع تحديد اسم للملف وامتداد صريح لضمان معالجة السيرفر
           formData.append('image', imageInput, 'plant_image.jpeg');
         } else {
           try {
-            // التحويل البرمجي للمسار النصي أو Base64 إلى Blob مادي لضمان وصوله للسيرفر
+            // التحويل البرمجي للمسار النصي أو Base64 إلى Blob مادي لضمان وصوله للسيرفر كملف حقيقي
             const blobRes = await fetch(imageInput);
             const blob = await blobRes.blob();
             formData.append('image', blob, 'plant_image.jpeg');
@@ -2810,9 +2811,19 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         const response = await fetch(apiUrl, {
           method: 'POST',
           body: formData
+          // ملاحظة: لا تضع 'Content-Type' يدوياً عند استخدام FormData لترك المتصفح يحدد الـ boundary
         });
         
-        data = await response.json();
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          // معالجة الأخطاء بمرونة: إذا لم يكن الرد JSON (مثل صفحة HTML)
+          const textError = await response.text();
+          console.error("Non-JSON Server Response:", textError.substring(0, 500));
+          throw new Error(`خطأ من الخادم (رد غير متوقع): ${textError.substring(0, 50) || response.statusText}`);
+        }
+
         if (!response.ok) {
           throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
         }
@@ -2824,7 +2835,14 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
           body: JSON.stringify({ image: imageInput, apiKey: apiKey })
         });
         
-        data = await response.json();
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          const textError = await response.text();
+          throw new Error(`خطأ في الرد: ${textError.substring(0, 50)}`);
+        }
+
         if (!response.ok) {
           throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
         }
