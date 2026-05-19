@@ -21,7 +21,16 @@ const upload = multer({
 app.use(cors());
 
 // Middleware for parsing JSON with a larger limit for images
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ limit: '15mb', extended: true }));
+
+// Request Logger for debugging mobile issues
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[API REQUEST] ${req.method} ${req.path} - UA: ${req.headers['user-agent']}`);
+  }
+  next();
+});
 
 // AI Diagnosis API Handler (Handing both JSON and Multipart)
 app.post("/api/plant/diagnose", (req, res, next) => {
@@ -140,6 +149,17 @@ app.post("/api/plant/diagnose", (req, res, next) => {
     
     res.status(500).json({ error: errorMessage });
   }
+});
+
+// Final Error Handler to catch any unexpected errors and return JSON
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('[GLOBAL ERROR]', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500).json({
+    error: err.message || "حدث خطأ غير متوقع في الخادم"
+  });
 });
 
 async function startServer() {

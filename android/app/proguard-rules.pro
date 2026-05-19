@@ -23,3 +23,11 @@
 # 5. General Android Support rules
 -dontwarn com.google.android.gms.**
 -keep class com.google.android.gms.** { *; }
+
+# 6. AI Models & JSON Protection (Keep Attributes & Variable Names)
+-keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
+-keepclassmembernames class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+-dontwarn java.lang.invoke.MethodHandle
+-dontwarn java.lang.invoke.MethodHandles$Lookup

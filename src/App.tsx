@@ -2768,7 +2768,39 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
   }
 };
 
-  const analyzeImage = async (imageInput: string | Blob) => {
+  const compressImage = async (imageInput: string | Blob): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_SIZE = 1200;
+        if (width > height) {
+          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        } else {
+          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Compression failed'));
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = () => reject(new Error('Image load failed'));
+      if (typeof imageInput === 'string') {
+        img.src = imageInput;
+      } else {
+        const url = URL.createObjectURL(imageInput);
+        img.src = url;
+      }
+    });
+  };
+
+  const analyzeImage = async (originalInput: string | Blob) => {
     setLoading(true);
     setProgress(0);
     setResult(null);
@@ -2777,13 +2809,19 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
     // Progress simulation interval
     const progressInterval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 98) return prev; // Hold at 98 until real response
+        if (prev >= 98) return prev; 
         const jump = prev < 30 ? (Math.random() * 20 + 5) : (Math.random() * 3 + 1);
         return Math.min(prev + jump, 98);
       });
     }, 400);
     
     try {
+      // Step 1: Compress always for reliable mobile upload
+      const imageInput = await compressImage(originalInput).catch(err => {
+        console.warn("Compression failed, using original:", err);
+        return originalInput;
+      });
+
       let data;
       const apiKey = openRouterKey || paidApiKey;
 
@@ -2792,16 +2830,13 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         const formData = new FormData();
         
         if (imageInput instanceof Blob) {
-          // تأكد من حقن الـ Blob مع تحديد اسم للملف وامتداد صريح لضمان معالجة السيرفر
           formData.append('image', imageInput, 'plant_image.jpeg');
         } else {
           try {
-            // التحويل البرمجي للمسار النصي أو Base64 إلى Blob مادي لضمان وصوله للسيرفر كملف حقيقي
             const blobRes = await fetch(imageInput);
             const blob = await blobRes.blob();
             formData.append('image', blob, 'plant_image.jpeg');
           } catch (e) {
-            console.error("Binary conversion failed, fallback to text:", e);
             formData.append('image', imageInput);
           }
         }
@@ -2810,6 +2845,10 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
 
         const response = await fetch(apiUrl, {
           method: 'POST',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
+            'Accept': 'application/json'
+          },
           body: formData
           // ملاحظة: لا تضع 'Content-Type' يدوياً عند استخدام FormData لترك المتصفح يحدد الـ boundary
         });
@@ -2831,7 +2870,11 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         // Standard JSON fetch for web-only or other cases
         const response = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36'
+          },
           body: JSON.stringify({ image: imageInput, apiKey: apiKey })
         });
         
