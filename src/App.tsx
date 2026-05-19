@@ -2800,11 +2800,35 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
     });
   };
 
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const getBase64FromInput = async (input: string | Blob): Promise<string> => {
+    if (input instanceof Blob) {
+      return blobToBase64(input);
+    }
+    if (typeof input === 'string') {
+      if (input.startsWith('data:image')) {
+        return input;
+      }
+      const res = await fetch(input);
+      const blob = await res.blob();
+      return blobToBase64(blob);
+    }
+    throw new Error("نوع ملف الصورة غير صالح");
+  };
+
   const analyzeImage = async (originalInput: string | Blob) => {
     setLoading(true);
     setProgress(0);
     setResult(null);
-    const apiUrl = getApiUrl('/api/plant/diagnose');
+    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
     // Progress simulation interval
     const progressInterval = setInterval(() => {
@@ -2823,72 +2847,90 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
       });
 
       let data;
-      const apiKey = openRouterKey || paidApiKey;
+      // Step 2: Resolve OpenRouter API Key
+      let activeKey = openRouterKey || paidApiKey;
+      if (!activeKey) {
+        console.log("No key in state, fetching dynamically from GAS Sheet...");
+        activeKey = await fetchApiKeyFromGAS();
+      }
 
-      // Prepare data for transmission (Fixed for Android Release APK)
-      if (imageInput instanceof Blob || Capacitor.isNativePlatform()) {
-        const formData = new FormData();
-        
-        if (imageInput instanceof Blob) {
-          formData.append('image', imageInput, 'plant_image.jpeg');
-        } else {
-          try {
-            const blobRes = await fetch(imageInput);
-            const blob = await blobRes.blob();
-            formData.append('image', blob, 'plant_image.jpeg');
-          } catch (e) {
-            formData.append('image', imageInput);
-          }
-        }
-        
-        if (apiKey) formData.append('apiKey', apiKey);
+      if (!activeKey) {
+        throw new Error("عذرًا، لم يتم العثور على مفتاح API الخاص بـ OpenRouter. يرجى التحقق من إعدادات الاتصال أو جدول البيانات الخاص بك.");
+      }
 
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
-            'Accept': 'application/json'
-          },
-          body: formData
-          // ملاحظة: لا تضع 'Content-Type' يدوياً عند استخدام FormData لترك المتصفح يحدد الـ boundary
-        });
-        
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          data = await response.json();
-        } else {
-          // معالجة الأخطاء بمرونة: إذا لم يكن الرد JSON (مثل صفحة HTML)
-          const textError = await response.text();
-          console.error("Non-JSON Server Response:", textError.substring(0, 500));
-          throw new Error(`خطأ من الخادم (رد غير متوقع): ${textError.substring(0, 50) || response.statusText}`);
-        }
+      // Step 3: Convert compressed image input into pure Base64 url
+      const base64Image = await getBase64FromInput(imageInput);
 
-        if (!response.ok) {
-          throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
-        }
-      } else {
-        // Standard JSON fetch for web-only or other cases
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36'
-          },
-          body: JSON.stringify({ image: imageInput, apiKey: apiKey })
-        });
-        
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          data = await response.json();
-        } else {
-          const textError = await response.text();
-          throw new Error(`خطأ في الرد: ${textError.substring(0, 50)}`);
-        }
+      const prompt = `
+أنت خبير زراعي عالمي ومستشار مختص في تشخيص أمراض النباتات. 
+مهمتك هي تحليل الصورة المرفقة وتقديم تقرير مفصل جداً بأسلوب "بشري" ودود ومهني، وكأنك تتحدث مباشرة مع المزارع لتنصحه.
 
-        if (!response.ok) {
-          throw new Error(data.error || 'فشل الاتصال بالخادم الذكي');
-        }
+التعليمات الهامة جداً لضمان الجودة:
+1. الشخصية والأسلوب: تحدث كبشر، استخدم عبارات تشجيعية متنوعة. لا تكرر نفس الجمل الافتتاحية في كل تشخيص. إذا كان النبات سليماً، عبر عن سعادتك بأساليب مختلفة ومبتكرة في كل مرة.
+2. الطول والتفصيل: يجب أن يكون حقل "diagnosis" وحقل "careTips" مفصلين وشاملين جداً. يجب ألا يقل النص الخاص بالتشخيص أو النصائح الإرشادية عن 5 أسطر كاملة من المعلومات المفيدة والدقيقة والوصف المستفيض في كل تقرير لتغطية الحالة الصحية بدقة عالية.
+3. المرونة التامة: إذا كانت الصورة تحتوي على أي جزء من نبات (حتى لو كانت الجودة ضعيفة أو الصورة بعيدة أو مشوشة أو الخلفية مزدحمة)، فيجب أن تعتبره نباتاً وتجتهد في التشخيص. لا ترفض الصورة إلا إذا كانت خالية تماماً من أي مظهر نباتي.
+4. اللغة: يجب أن يكون الرد باللغة العربية الفصحى البسيطة والودودة. يمنع منعاً باتاً استخدام أي لغات أخرى (مثل الصينية أو الإنجليزية) داخل الحقول النصية.
+5. الري: لا تحدد عدداً ثابتاً للأيام، بل اربط الري دائماً بحس جفاف التربة (مثلاً: "تلمس التربة بإصبعك، إذا وجدت أول 2-3 سم جافة، فهذا هو الوقت المثالي للري").
+
+يجب أن يكون الرد حصراً بتنسيق JSON كما يلي:
+{
+  "isPlant": boolean,
+  "plantName": "اسم النبات الشائع والعلمي باللغة العربية",
+  "isHealthy": boolean,
+  "diagnosis": "تقرير مفصل وشامل جداً (لا يقل بأي حال من الأحوال عن 5 أسطر طويلة ومستفيضة ومفصلة برسم الأفكار بدقة) يصف الحالة الصحية بأسلوب بشري مستفيض وغير مكرر",
+  "generalMedicine": "اسم العلاج الكيماوي أو المبيد المقترح أو وسيلة الوقاية بدقة",
+  "localAlternative": "علاج طبيعي أو وصفة بلدية (مثل الرماد أو الصابون أو الثوم)",
+  "careTips": ["نصيحة لرعاية النبات تفصيلية للغاية 1 (مفصلة جداً)", "نصيحة لرعاية النبات تفصيلية للغاية 2 (مفصلة جداً)", "نصيحة لرعاية النبات تفصيلية للغاية 3 (مفصلة جداً)"]
+}
+`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${activeKey}`,
+          'HTTP-Referer': 'https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app',
+          'X-Title': 'Zone Agribusiness App'
+        },
+        body: JSON.stringify({
+          model: "qwen/qwen-2.5-vl-72b-instruct", 
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: base64Image
+                  }
+                }
+              ]
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 1000,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OpenRouter Response Error:", errorText);
+        throw new Error(`خطأ من خادم OpenRouter: ${response.status} | ${errorText.substring(0, 100)}`);
+      }
+
+      const resData = await response.json();
+      if (!resData?.choices || resData.choices.length === 0) {
+        throw new Error("لم يتم استلام رد من نموذج كوين للذكاء الاصطناعي.");
+      }
+
+      const resultText = resData.choices[0].message.content;
+      try {
+        data = JSON.parse(resultText);
+      } catch (jsonErr) {
+        console.error("Failed to parse JSON answer from Qwen:", resultText, jsonErr);
+        throw new Error("فشل في فك تشفير وتنسيق رد نموذج كوين. يرجى إعادة المحاولة.");
       }
       
       setProgress(100);
@@ -2898,14 +2940,14 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
       let errorMessage = "عذراً، حدث خطأ أثناء تحليل الصورة. يرجى المحاولة لاحقاً.";
       
       if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
-        errorMessage = "فشل الاتصال بالخادم. تأكد من توفر الإنترنت وأن الرابط " + apiUrl + " متاح حالياً. (Network Error)";
+        errorMessage = "فشل الاتصال المباشر بخوادم الذكاء الاصطناعي. يرجى التأكد من توفر اتصال مستقر بالإنترنت.";
       } else if (err.message) {
         errorMessage = err.message;
       }
       
       setResult({ 
         error: errorMessage, 
-        debug: `URL: ${apiUrl} | Error: ${err.message} | Stack: ${err.stack || 'No stack'}`
+        debug: `Direct OpenRouter Request | Error: ${err.message}`
       });
     } finally {
       clearInterval(progressInterval);
