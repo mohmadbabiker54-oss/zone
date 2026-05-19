@@ -119,6 +119,7 @@ app.post("/api/plant/diagnose", (req, res, next) => {
           "X-Title": "Zone Agribusiness App",
           "Content-Type": "application/json",
         },
+        timeout: 60000 // 60 seconds timeout for downstream API call to avoid gateway timeout
       }
     );
 
@@ -178,9 +179,14 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+
+  // Set response, keep-alive, and header request timeouts to 120 seconds (120000ms) to prevent early socket closure
+  server.timeout = 120000;
+  server.keepAliveTimeout = 120000;
+  server.headersTimeout = 125000;
 }
 
 startServer();
