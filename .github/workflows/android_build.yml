@@ -1,0 +1,70 @@
+name: Build Zoon Doctor (APK & AAB Production)
+
+on:
+  push:
+    branches:
+      - main # أو master حسب اسم الفرع الرئيسي لديك
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Android Packages
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. جلب الكود من مستودع GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. إعداد بيئة جافا (مهمة جداً لبناء الأندرويد والـ ProGuard)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      # 3. إعداد بيئة Node.js وتركيب الاعتماديات لـ React/TypeScript
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm install
+          npm run build --if-present
+
+      # 4. إعداد الـ Android SDK تلقائياً على سيرفر جيت هاب
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 5. إعطاء صلاحيات التنفيذ لملف البناء في الأندرويد (Gradle)
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      # 6. بناء حزمة الـ APK وحزمة الـ AAB معاً بنسخة الإنتاج المستقرة
+      - name: Build Android APK and AAB (Release)
+        run: |
+          cd android
+          # أمر بناء الـ APK والـ AAB في سطر واحد لتسريع العملية
+          ./gradlew assembleRelease bundleRelease --no-daemon
+
+      # 7. استخراج وحفظ ملف الـ APK النهائي وجعله جاهزاً للتحميل والتثبيت المباشر
+      - name: Upload Production APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zoon-Smart-Doctor-APK-يعمل
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
+
+      # 8. استخراج وحفظ ملف الـ AAB النهائي وجعله جاهزاً للرفع على جوجل بلاي
+      - name: Upload Production AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zoon-Smart-Doctor-AAB-يعمل
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 7
