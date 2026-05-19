@@ -1,24 +1,24 @@
-name: Build Zoon Doctor (APK & AAB Production)
+name: Build Zoon Doctor (APK & AAB - Shaghal 100%)
 
 on:
   push:
     branches:
-      - main # أو master حسب اسم الفرع الرئيسي لديك
+      - main # أو master حسب اسم الفرع الرئيسي عندك
   pull_request:
     branches:
       - main
 
 jobs:
   build:
-    name: Build Android Packages
+    name: Generate Production Packages
     runs-on: ubuntu-latest
 
     steps:
-      # 1. جلب الكود من مستودع GitHub
+      # 1. جلب الكود بالكامل من المستودع
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. إعداد بيئة جافا (مهمة جداً لبناء الأندرويد والـ ProGuard)
+      # 2. إعداد جافا للتعامل مع الـ ProGuard وحزم الأندرويد
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -26,34 +26,40 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      # 3. إعداد بيئة Node.js وتركيب الاعتماديات لـ React/TypeScript
+      # 3. إعداد بيئة الـ Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
 
-      - name: Install Dependencies
+      # 4. تثبيت مكتبات الـ Web وبناء الفرونت إند أولاً (React / Vite)
+      - name: Install Web Dependencies & Build Assets
         run: |
           npm install
           npm run build --if-present
 
-      # 4. إعداد الـ Android SDK تلقائياً على سيرفر جيت هاب
+      # 5. خطوة السر: تثبيت الـ Capacitor وعمل مزامنة لبناء مجلد الأندرويد برمجياً داخل السيرفر
+      - name: Sync Capacitor Android Project
+        run: |
+          npm install @capacitor/cli @capacitor/core @capacitor/android
+          npx cap sync android
+
+      # 6. إعداد الـ Android SDK وتثبيت تراخيص جوجل تلقائياً
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 5. إعطاء صلاحيات التنفيذ لملف البناء في الأندرويد (Gradle)
+      # 7. إعطاء صلاحيات النظام لملف الـ Gradle المُنشأ حديثاً
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
-      # 6. بناء حزمة الـ APK وحزمة الـ AAB معاً بنسخة الإنتاج المستقرة
-      - name: Build Android APK and AAB (Release)
+      # 8. بناء حزمة الـ APK والـ AAB في سطر واحد بنظام الـ Release والـ ProGuard المعدل
+      - name: Build Android APK and AAB
         run: |
           cd android
-          # أمر بناء الـ APK والـ AAB في سطر واحد لتسريع العملية
           ./gradlew assembleRelease bundleRelease --no-daemon
 
-      # 7. استخراج وحفظ ملف الـ APK النهائي وجعله جاهزاً للتحميل والتثبيت المباشر
+      # 9. استخراج وحفظ ملف الـ APK الشغال والتنفيذي للتجربة المباشرة
       - name: Upload Production APK Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -61,7 +67,7 @@ jobs:
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 7
 
-      # 8. استخراج وحفظ ملف الـ AAB النهائي وجعله جاهزاً للرفع على جوجل بلاي
+      # 10. استخراج وحفظ ملف الـ AAB الرسمي الجاهز للمتجر
       - name: Upload Production AAB Artifact
         uses: actions/upload-artifact@v4
         with:
