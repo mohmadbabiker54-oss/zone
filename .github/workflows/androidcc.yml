@@ -1,0 +1,136 @@
+name: Build Android (Zoon - Capacitor Qwen Final Pristine)
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Dependencies & Build Web Assets
+        run: |
+          npm install --legacy-peer-deps
+          # بناء ملفات الويب والـ Frontend أولاً بنقاء تام
+          npm run build --if-present
+          # التأكد من وجود مجلد التوزيع وعدم انهيار الكاباسيتور
+          mkdir -p dist && touch dist/index.html 
+          # مزامنة أصول الويب مع مجلد الأندرويد الأصلي
+          npx cap sync android
+
+      - name: Super Deep Resource Clean & Secured Logo Maintenance
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick curl
+          RES_DIR="android/app/src/main/res"
+          
+          # تنظيف شامل للتخلص من مخلفات النظام القديمة لضمان خفة حجم الـ APK ونقائه
+          echo "Purging redundant system resources..."
+          find $RES_DIR -type f -name "ic_launcher*.png" -delete
+          find $RES_DIR -type f -name "ic_launcher*.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
+          find $RES_DIR -type f -name "*_round.png" -delete
+          find $RES_DIR -type f -name "*_round.xml" -delete
+          find $RES_DIR -type f -name "splash*.png" -delete
+          find $RES_DIR -type f -name "splash*.xml" -not -path "*/drawable/*" -delete
+
+          # جلب وتأمين أيقونة زون المعتمدة والممتازة من جوجل درايف
+          mkdir -p resources
+          echo "Locking down the approved Sovereign Zoon Logo..."
+          curl -sL "https://docs.google.com/uc?export=download&id=1T9BVEcfQqCh62Va0WgdW5ZwkeTaIBCTG" -o resources/raw_icon.png
+
+          # الفلتر البرمجي الذي يمنح الأيقونة نقائها وخلفيتها البيضاء الناصعة
+          if [ -f "resources/raw_icon.png" ]; then
+            convert resources/raw_icon.png -fuzz 25% -transparent "#FFC0CB" -background "#FFFFFF" -flatten resources/icon.png || cp resources/raw_icon.png resources/icon.png
+          fi
+
+          # توزيع الأيقونة هندسياً بمقاساتها الصحيحة داخل مجلدات الأندرويد
+          if [ -f "resources/icon.png" ]; then
+            find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher_foreground.png \;
+            find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher.png \;
+          fi
+
+          # بناء هيكل الأيقونة التكيفية (Adaptive Icon) المؤمن والنظيف
+          mkdir -p $RES_DIR/mipmap-anydpi-v26
+          cat <<EOF > $RES_DIR/mipmap-anydpi-v26/ic_launcher.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/ic_launcher_background" />
+              <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+          </adaptive-icon>
+          EOF
+
+          # تثبيت اللون الأبيض النقي للخلفية برمجياً تحت الشعار
+          mkdir -p $RES_DIR/values
+          cat <<EOF > $RES_DIR/values/colors.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="ic_launcher_background">#FFFFFF</color>
+          </resources>
+          EOF
+
+          find $RES_DIR -name "ic_launcher_background.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
+
+      - name: Sovereign SDK 36 Alignment
+        run: |
+          cd android
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.9.1/g' build.gradle
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          sed -i 's/protected void onStart()/public void onStart()/g' app/src/main/java/com/zoon/agri/app/MainActivity.java
+
+          cd app
+          sed -i '/minSdkVersion/d' build.gradle || true
+          sed -i '/compileSdk/d' build.gradle || true
+          sed -i '/targetSdk/d' build.gradle || true
+          sed -i '/android {/a \    compileSdk 36\n    defaultConfig {\n        minSdkVersion 24\n        targetSdk 36\n    }' build.gradle
+          
+          cd ..
+          gradle wrapper --gradle-version 8.11.1
+          chmod +x gradlew
+
+      - name: Add Splash Screen Resource
+        run: |
+          RES_DIR="android/app/src/main/res"          
+          mkdir -p $RES_DIR/drawable
+          cat <<'EOF' > $RES_DIR/drawable/splash.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+              <item android:drawable="@android:color/white" />
+              <item>
+                  <bitmap
+                      android:src="@mipmap/ic_launcher"
+                      android:gravity="center" />
+              </item>
+          </layer-list>
+          EOF
+
+      - name: Generate Zoon Native Capacitor APK & AAB
+        run: |
+          cd android
+          # بناء نظيف تماماً بالاعتماد على Gradle الخاص بـ Capacitor الأصلي للمشروع
+          ./gradlew clean --no-daemon
+          ./gradlew bundleRelease assembleRelease --no-daemon
+
+      - name: Upload Zoon Production Artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zoon-Production-Outputs-(APK-&-AAB)
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/bundle/release/*.aab
