@@ -1,4 +1,4 @@
-name: Build Android (Zoon - Sovereign Ultimate APK & AAB)
+name: Build Android (Zoon - Manifest Auto-Fix & Ultimate Build)
 
 on:
   workflow_dispatch:
@@ -32,23 +32,74 @@ jobs:
           mkdir -p dist && touch dist/index.html 
           npx cap sync android
 
-      - name: Sovereign ProGuard & Manifest Security Injection
+      - name: Auto-Fix AndroidManifest Structure & Inject ProGuard
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
           PROGUARD_PATH="android/app/proguard-rules.pro"
 
-          # 1. تثبيت سماحية البيانات غير المشفرة وحماية حركة مرور الشبكة في الـ Manifest كما طلب الوكيل
+          # 1. إعادة بناء وهيكلة ملف الـ AndroidManifest برمجياً لتفادي أخطاء الـ Parsing والـ Merger نهائياً
           if [ -f "$MANIFEST_PATH" ]; then
-            echo "Injecting Network Security Permissions into AndroidManifest..."
-            sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' $MANIFEST_PATH
-            sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' $MANIFEST_PATH
+            echo "Re-structuring AndroidManifest to fix location/gps elements tag alignment..."
+            
+            cat <<EOF > $MANIFEST_PATH
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="true" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/AppTheme">
+        
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:name="com.zoon.agri.app.MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:launchMode="singleTop"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="\${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>
+EOF
           fi
 
-          # 2. حقن وتأمين قواعد ProGuard/R8 لحماية كلاسات الـ JSON والـ AI Models من التشفير البرمجي
+          # 2. تأمين قواعد ProGuard لمنع تشفير كلاسات الـ AI والـ JSON المرسلة للسيرفر
           if [ -f "$PROGUARD_PATH" ]; then
-            echo "Injecting Sovereign ProGuard Rules to protect AI Models..."
+            echo "Injecting ProGuard rules..."
             cat <<EOF >> $PROGUARD_PATH
-            # Zoon Sovereign Protection Rules for AI and JSON Parsers
             -keepattributes Signature,Annotation,*Annotation*,EnclosingMethod,InnerClasses
             -keepclassmembers class * {
                 @com.google.gson.annotations.SerializedName <fields>;
@@ -64,8 +115,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y imagemagick curl
           RES_DIR="android/app/src/main/res"
           
-          # تنظيف فائق العمق للملفات الميتة لضمان خفة حجم التطبيق ونقائه
-          echo "Purging redundant system caches and icons..."
+          # تنظيف فائق العمق لملفات النظام الميتة لضمان أقصى درجات النقاوة وخفة الحجم
           find $RES_DIR -type f -name "ic_launcher*.png" -delete
           find $RES_DIR -type f -name "ic_launcher*.xml" -not -path "*/mipmap-anydpi-v26/*" -delete
           find $RES_DIR -type f -name "*_round.png" -delete
@@ -75,21 +125,20 @@ jobs:
 
           # جلب وتأمين أيقونة زون الممتازة المعتمدة من جوجل درايف
           mkdir -p resources
-          echo "Locking down the approved Sovereign Zoon Logo..."
           curl -sL "https://docs.google.com/uc?export=download&id=1T9BVEcfQqCh62Va0WgdW5ZwkeTaIBCTG" -o resources/raw_icon.png
 
-          # الفلتر البرمجي الذي أحببته لتنقية الشعار وجعل الخلفية بيضاء ناصعة
+          # الفلتر البرمجي لتنقية الشعار وجعل الخلفية بيضاء ناصعة وممتازة
           if [ -f "resources/raw_icon.png" ]; then
             convert resources/raw_icon.png -fuzz 25% -transparent "#FFC0CB" -background "#FFFFFF" -flatten resources/icon.png || cp resources/raw_icon.png resources/icon.png
           fi
 
-          # توزيع الأيقونة النظيفة على مجلدات أندرويد بالمقاسات الهندسية الدقيقة
+          # توزيع الأيقونة النظيفة على مجلدات أندرويد بالمقاسات الهندسية القياسية
           if [ -f "resources/icon.png" ]; then
             find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher_foreground.png \;
             find $RES_DIR -type d -name "mipmap-*" ! -name "mipmap-anydpi-v26" -exec convert "resources/icon.png" -resize 192x192 {}/ic_launcher.png \;
           fi
 
-          # حماية هيكل الأيقونة التكيفية لمنع تمدد الشعار
+          # حماية هيكل الأيقونة التكيفية (Adaptive Icon) لمنع التمدد أو التشوه
           mkdir -p $RES_DIR/mipmap-anydpi-v26
           cat <<EOF > $RES_DIR/mipmap-anydpi-v26/ic_launcher.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -142,14 +191,13 @@ jobs:
           </layer-list>
           EOF
 
-      - name: Generate Zoon Sovereign AAB & APK Combined
+      - name: Generate Zoon Sovereign AAB & APK Together
         run: |
           cd android
-          # تنظيف كاش المعمارية بالكامل لدمج دالة ضغط الصور والـ Middleware الجديدة بنقاء تام
           ./gradlew clean --no-daemon
           ./gradlew bundleRelease assembleRelease --no-daemon
 
-      - name: Upload Zoon Sovereign Certified Artifacts
+      - name: Upload Zoon Sovereign Fixed Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
