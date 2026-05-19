@@ -1,0 +1,62 @@
+name: Flutter Build APK & AAB
+
+on:
+  push:
+    branches:
+      - main # أو master حسب اسم الفرع الرئيسي لديك
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. جلب الكود من المستودع
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. إعداد بيئة جافا (مطلوبة لبناء الأندرويد)
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu' # أو 'temurin'
+          java-version: '17'
+
+      # 3. إعداد بيئة فلاتر
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x' # سيقوم بجلب أحدث نسخة مستقرة من الجيل الثالث
+          channel: 'stable'
+
+      # 4. جلب المكتبات والحزم
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 5. تنظيف المشروع لتجنب تداخل الملفات المؤقتة
+      - name: Clean build profiles
+        run: flutter clean
+
+      # 6. بناء ملف الـ APK (نسخة الإصدار النهائي الموحدة)
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 7. بناء ملف الـ AAB (المطلوب لمتجر جوجل بلاي)
+      - name: Build App Bundle (AAB)
+        run: flutter build appbundle --release
+
+      # 8. حفظ ملف الـ APK كناتج مستخرج (Artifact) للتحميل المباشر
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      # 9. حفظ ملف الـ AAB كناتج مستخرج (Artifact) للتحميل المباشر
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
