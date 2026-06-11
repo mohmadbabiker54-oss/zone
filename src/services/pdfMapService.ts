@@ -71,7 +71,7 @@ export const PDFMapService = {
       // 5. Footer
       doc.setFontSize(10);
       doc.setTextColor(150);
-      doc.text('تم توليد هذا الملف آلياً من تطبيق زون - أمان وخصوصية تامة', 105, 280, { align: 'center' });
+      doc.text('تم توليد هذا الملف آلياً من طبيب زون - أمان وخصوصية تامة', 105, 280, { align: 'center' });
 
       // --- Saving logic ---
       const pdfBase64 = doc.output('datauristring').split(',')[1];

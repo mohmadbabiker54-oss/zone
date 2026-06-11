@@ -1,6 +1,6 @@
 {
-  "name": "زون للخدمات الزراعية",
-  "description": "تطبيق زون للخدمات الزراعية - التطبيق الرسمي لمبيعات شتول الزينة والأسمدة والمبيدات مع نظام تشخيص ذكي.",
+  "name": "طبيب زون",
+  "description": "طبيب زون للخدمات الزراعية - التطبيق الرسمي لمبيعات شتول الزينة والأسمدة والمبيدات مع نظام تشخيص ذكي.",
   "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

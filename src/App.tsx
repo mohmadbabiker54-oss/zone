@@ -551,7 +551,6 @@ const RegistrationScreen = ({ onComplete, onShowLegal }: { onComplete: (data: Us
             </div>
 
             <motion.button
-              whileTap={agreed ? { scale: 0.95 } : {}}
               type="submit"
               disabled={!agreed}
               className={`w-full h-16 rounded-2xl font-black text-lg shadow-xl shadow-black/40 flex items-center justify-center space-x-reverse space-x-3 border-b-4 transition-all ${
@@ -612,7 +611,6 @@ const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInv
             {cart.length > 0 && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={onClearAll}
                 className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg font-black text-xs flex items-center space-x-reverse space-x-2 hover:bg-red-500/20 transition-all"
               >
@@ -646,7 +644,6 @@ const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInv
               <p className="text-lg font-bold mt-2 text-yellow-500/30">ابدأ بإضافة بعض النباتات الجميلة لبيتك</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={onClose}
                 className="mt-8 px-8 py-4 bg-yellow-600/20 text-yellow-500 border border-yellow-600/30 rounded-2xl font-black"
               >
@@ -692,7 +689,6 @@ const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInv
                       
                       <motion.button 
                         whileHover={{ scale: 1.2, rotate: 15 }}
-                        whileTap={{ scale: 0.8 }}
                         onClick={() => onRemove(index)}
                         className="p-3 text-red-400/60 hover:text-red-400 hover:bg-red-500/20 rounded-xl transition-all duration-300 relative z-10"
                       >
@@ -732,7 +728,6 @@ const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInv
                 <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-reverse sm:space-x-6 relative z-10">
                   <motion.button
                     whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={onClose}
                     className="flex-1 h-20 rounded-[1.5rem] font-black text-xl bg-white/5 text-white border border-white/10 transition-all flex items-center justify-center space-x-reverse space-x-3"
                   >
@@ -743,7 +738,6 @@ const CartModal = ({ isOpen, onClose, cart, onRemove, onClearAll, onProceedToInv
                   <motion.button
                     disabled={cart.length === 0}
                     whileHover={cart.length > 0 ? { scale: 1.02, y: -5 } : {}}
-                    whileTap={cart.length > 0 ? { scale: 0.98 } : {}}
                     onClick={onProceedToInvoice}
                     className={`flex-[2] h-20 rounded-[1.5rem] font-black text-2xl shadow-[0_25px_50px_-12px_rgba(183,28,28,0.5)] flex items-center justify-center space-x-reverse space-x-4 border-b-8 transition-all relative overflow-hidden group ${
                       cart.length > 0 
@@ -889,7 +883,6 @@ const InvoiceModal = ({ isOpen, onClose, onProceedToPayment, cart, userData }: {
             <div className="mt-8 relative z-10">
               <motion.button
                 whileHover={{ scale: 1.02, y: -5 }}
-                whileTap={{ scale: 0.98 }}
                 onClick={onProceedToPayment}
                 className="w-full h-16 rounded-2xl font-black text-xl shadow-[0_20px_40px_rgba(21,128,61,0.3)] flex items-center justify-center space-x-reverse space-x-4 border-b-4 bg-gradient-to-r from-green-700 to-green-600 text-white border-green-900 transition-all"
               >
@@ -976,7 +969,6 @@ const SuccessScreen = ({ onBackToHome }: { onBackToHome: () => void }) => {
 
         <motion.button
           whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(234, 179, 8, 0.6)' }}
-          whileTap={{ scale: 0.95 }}
           onClick={onBackToHome}
           className="w-full max-w-md py-6 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 text-red-900 rounded-2xl font-black text-2xl shadow-[0_10px_50px_rgba(234,179,8,0.4)] flex items-center justify-center space-x-reverse space-x-4 border-b-4 border-yellow-800 relative overflow-hidden group"
         >
@@ -1463,7 +1455,6 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
                   <div className="flex flex-col items-center">
                     <motion.button
                       whileHover={{ scale: 1.2 }}
-                      whileTap={{ scale: 0.8 }}
                       onClick={handleCopy}
                       className="p-3 bg-yellow-600 text-red-900 rounded-2xl shadow-lg relative"
                     >
@@ -1752,7 +1743,6 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
           <div className="w-full space-y-4">
             <motion.div
               whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.95 }}
               onClick={handlePickReceipt}
               className={`w-full h-40 rounded-3xl border-4 border-dashed transition-all flex flex-col items-center justify-center space-y-4 group relative overflow-hidden cursor-pointer z-10 ${
                 receipt ? 'border-green-500 bg-green-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'
@@ -1790,7 +1780,6 @@ const PaymentModal = ({ isOpen, onClose, userData, cart, onSuccess, gardenPhoto,
 
             <motion.button
               disabled={!receipt || isGenerating || !markerPos}
-              whileTap={{ scale: 0.98 }}
               onClick={generateSecurePDF}
               className={`w-full h-16 rounded-2xl font-black text-lg shadow-2xl transition-all flex items-center justify-center space-x-reverse space-x-3 ${
                 receipt && !isGenerating && markerPos
@@ -2208,7 +2197,6 @@ const ProductCard = ({ name, price, image, onAddToCart, onImageClick }: { name: 
         <div className="relative mt-auto pt-1">
           <motion.button
             whileHover={{ y: -5, scale: 1.02 }}
-            whileTap={{ y: 2, scale: 0.98 }}
             onClick={handleAdd}
             className={`w-full py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase transition-all duration-500 flex items-center justify-center space-x-reverse space-x-2 shadow-[0_20px_40px_rgba(6,78,59,0.5)] border-b-4 border-[#043a2c] relative z-10 overflow-hidden ${
               isFlashing 
@@ -2278,7 +2266,6 @@ const AnimatedButton = ({ icon, label, onClick, level, isGlossy }: GridItemProps
         <audio ref={audioRef} src="https://docs.google.com/uc?export=download&id=11-PcQTJ8WG1jUPIZl2aHjViIDh13l9Lv" />
         
         <motion.div 
-          whileTap={{ scale: 0.9, y: 4 }}
           onClick={handleClick}
           className={`relative ${buttonWidth} ${buttonHeight} ${borderRadius} overflow-hidden shadow-[0_4px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center`}
           style={{
@@ -2325,8 +2312,6 @@ const AnimatedButton = ({ icon, label, onClick, level, isGlossy }: GridItemProps
       <audio ref={audioRef} src="https://docs.google.com/uc?export=download&id=11-PcQTJ8WG1jUPIZl2aHjViIDh13l9Lv" />
       
       <motion.div 
-        whileTap={{ scale: 0.85, y: 6 }}
-        transition={{ type: "spring", stiffness: 500, damping: 12 }}
         onClick={handleClick}
         className={`relative ${buttonWidth} ${buttonHeight} bg-gradient-to-b from-red-500 to-red-700 ${borderRadius} flex items-center justify-center shadow-xl border-b-[6px] border-red-900 active:border-b-0 overflow-hidden ${glowColor}`}
       >
@@ -2757,7 +2742,6 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
     
     if (!response.ok) return null;
     const data = await response.json();
-    
     if (data && typeof data === 'object' && data.apiKey) {
       return data.apiKey;
     }
@@ -2869,68 +2853,161 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
 1. الشخصية والأسلوب: تحدث كبشر، استخدم عبارات تشجيعية متنوعة. لا تكرر نفس الجمل الافتتاحية في كل تشخيص. إذا كان النبات سليماً، عبر عن سعادتك بأساليب مختلفة ومبتكرة في كل مرة.
 2. الطول والتفصيل: يجب أن يكون حقل "diagnosis" وحقل "careTips" مفصلين وشاملين جداً. يجب ألا يقل النص الخاص بالتشخيص أو النصائح الإرشادية عن 5 أسطر كاملة من المعلومات المفيدة والدقيقة والوصف المستفيض في كل تقرير لتغطية الحالة الصحية بدقة عالية.
 3. المرونة التامة: إذا كانت الصورة تحتوي على أي جزء من نبات (حتى لو كانت الجودة ضعيفة أو الصورة بعيدة أو مشوشة أو الخلفية مزدحمة)، فيجب أن تعتبره نباتاً وتجتهد في التشخيص. لا ترفض الصورة إلا إذا كانت خالية تماماً من أي مظهر نباتي.
-4. اللغة: يجب أن يكون الرد باللغة العربية الفصحى البسيطة والودودة. يمنع منعاً باتاً استخدام أي لغات أخرى (مثل الصينية أو الإنجليزية) داخل الحقول النصية.
+4. اللغة: يجب أن يكون الرد باللغة العربية الفصحى البسيطة والودودة. يمنع استخدام أي لغات أخرى داخل الحقول النصية، باستثناء كتابة الاسم العلمي اللاتيني للنبات باللغة الإنجليزية في حقل الاسم المخصص له.
 5. الري: لا تحدد عدداً ثابتاً للأيام، بل اربط الري دائماً بحس جفاف التربة (مثلاً: "تلمس التربة بإصبعك، إذا وجدت أول 2-3 سم جافة، فهذا هو الوقت المثالي للري").
+6. المؤشرات الحيوية الافتراضية (vitalIndicators): قم بتوليد 4 مؤشرات حيوية افتراضية تقييمية لحالة النبتة تعبر عن صحتها بناءً على التشخيص؛ بحيث تكون قيماً لغوية نوعية (مرتفع/متوسط/منخفض) أو (جيد/متوسط/منخفض) وتتوافق منطقياً مع حالة النبات:
+   - chlorophyll: "مرتفع" أو "متوسط" أو "منخفض" (يعبر عن صبغة الكلوروفيل والنيتروجين)
+   - water: "جيد" أو "متوسط" أو "منخفض" (يعبر عن مؤشر المياه والترطيب NDWI)
+   - photosynthesis: "جيد" أو "متوسط" أو "منخفض" (يعبر عن كفاءة التمثيل الضوئي والنشاط PRI)
+   - growthDensity: "جيد" أو "متوسط" أو "منخفض" (يعبر عن كثافة وحجم النمو LAI)
+7. منع عبارات الشك والاحتمال تماماً (هام جداً): لا تستخدم أبداً عبارات تحتوي على شك أو احتمالية مثل "قد يكون المرض"، "من المحتمل"، "يحتمل"، "ربما"، "يُرجح". يجب أن تكون الصياغة جازمة ومحكمة ومؤكدة وقاطعة كلياً. صغ التشخيص مباشرة بصيغة التأكيد والبت القاطع: "المرض يسمى [اسم المرض]" أو "المرض هو [اسم المرض]" أو "النبات مصاب بـ [اسم المرض]".
+8. الاسم العلمي والترجمة الدقيقة (هام للغاية): يجب كتابة الاسم الشائع للنبات باللغة العربية الصحيحة والمتعارف عليها علمياً وزراعياً في الوطن العربي (مثال: "طماطم"، "بطاطس"، "باميا") وتجنب تماماً الترجمات الحرفية الخاطئة من الإنجليزية أو اختراع ترجمة حرفية للاسم العلمي. ويجب كتابة الاسم العلمي اللاتيني الصحيح والدقيق للنبات متبوعاً بالاسم العربي بين قوسين بالأحرف الإنجليزية الرومانية (مثال: "طماطم (Solanum lycopersicum)" أو "باميا (Abelmoschus esculentus)").
 
 يجب أن يكون الرد حصراً بتنسيق JSON كما يلي:
 {
   "isPlant": boolean,
-  "plantName": "اسم النبات الشائع والعلمي باللغة العربية",
+  "plantName": "اسم النبات الشائع باللغة العربية متبوعاً بالاسم العلمي اللاتيني الإنجليزي الصحيح والدقيق بين قوسين بالأحرف الإنجليزية الرومانية، مثل: طماطم (Solanum lycopersicum)",
   "isHealthy": boolean,
-  "diagnosis": "تقرير مفصل وشامل جداً (لا يقل بأي حال من الأحوال عن 5 أسطر طويلة ومستفيضة ومفصلة برسم الأفكار بدقة) يصف الحالة الصحية بأسلوب بشري مستفيض وغير مكرر",
+  "diagnosis": "تقرير مفصل وشامل جداً (لا يقل بأي حال من الأحوال عن 5 أسطر طويلة ومستفيضة ومفصلة برسم الأفكار بدقة وبصيغة جازمة قاطعة تصف المرض بالتأكيد التام دون أي صيغ شك أو احتمالات) يصف الحالة الصحية بأسلوب بشري مستفيض وغير مكرر",
   "generalMedicine": "اسم العلاج الكيماوي أو المبيد المقترح أو وسيلة الوقاية بدقة",
   "localAlternative": "علاج طبيعي أو وصفة بلدية (مثل الرماد أو الصابون أو الثوم)",
-  "careTips": ["نصيحة لرعاية النبات تفصيلية للغاية 1 (مفصلة جداً)", "نصيحة لرعاية النبات تفصيلية للغاية 2 (مفصلة جداً)", "نصيحة لرعاية النبات تفصيلية للغاية 3 (مفصلة جداً)"]
+  "careTips": ["نصيحة لرعاية النبات تفصيلية للغاية 1 (مفصلة جداً)", "نصيحة لرعاية النبات تفصيلية للغاية 2 (مفصلة جداً)", "نصيحة لرعاية النبات تفصيلية للغاية 3 (مفصلة جداً)"],
+  "vitalIndicators": {
+    "chlorophyll": "مرتفع | متوسط | منخفض",
+    "water": "جيد | متوسط | منخفض",
+    "photosynthesis": "جيد | متوسط | منخفض",
+    "growthDensity": "جيد | متوسط | منخفض"
+  }
 }
 `;
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${activeKey}`,
-          'HTTP-Referer': 'https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app',
-          'X-Title': 'Zone Agribusiness App'
-        },
-        body: JSON.stringify({
-          model: "qwen/qwen-2.5-vl-72b-instruct", 
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: prompt },
+      let lastError = null;
+      const modelsToTry = [
+        "google/gemini-2.5-flash",
+        "qwen/qwen-2.5-vl-72b-instruct",
+        "google/gemini-2.5-pro",
+        "google/gemini-flash-1.5",
+        "qwen/qwen-2.5-vl-7b-instruct",
+        "meta-llama/llama-3.2-11b-vision-instruct"
+      ];
+
+      for (const currentModel of modelsToTry) {
+        const formatsToTry = [
+          { type: "json_object" },
+          undefined
+        ];
+
+        for (const currentFormat of formatsToTry) {
+          try {
+            console.log(`Checking/attempting with model: ${currentModel} (format: ${currentFormat ? 'JSON' : 'Text'})...`);
+            
+            const requestBody: any = {
+              model: currentModel, 
+              messages: [
                 {
-                  type: "image_url",
-                  image_url: {
-                    url: base64Image
+                  role: "user",
+                  content: [
+                    { type: "text", text: prompt },
+                    {
+                      type: "image_url",
+                      image_url: {
+                        url: base64Image
+                      }
+                    }
+                  ]
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 1500,
+            };
+
+            if (currentFormat) {
+              requestBody.response_format = currentFormat;
+            }
+
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${activeKey}`,
+                'HTTP-Referer': 'https://ais-dev-svw5ykbmqk4up2f4hyeix3-740760212521.europe-west2.run.app',
+                'X-Title': 'Zone Agribusiness App'
+              },
+              body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`OpenRouter Model ${currentModel} returned error:`, errorText);
+              
+              // If it's a 400 error and we tried JSON format, let's retry with raw format immediately
+              if (response.status === 400 && currentFormat) {
+                console.log(`Format not supported for ${currentModel}, falling back to text format...`);
+                continue; // tries the next format (undefined)
+              }
+              
+              throw new Error(`خطأ من المزود (${currentModel}): ${response.status} | ${errorText.substring(0, 150)}`);
+            }
+
+            const resData = await response.json();
+            if (!resData?.choices || resData.choices.length === 0) {
+              throw new Error(`تجاوب فارغ من نموذج الـ AI: ${currentModel}`);
+            }
+
+            const resultText = resData.choices[0].message.content;
+            
+            // Parse using our ultra-robust extractor
+            try {
+              data = JSON.parse(resultText);
+            } catch (jsonErr) {
+              console.warn(`Direct JSON.parse failed for model ${currentModel}, trying regex...`, jsonErr);
+              // Regex extraction
+              const match = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+              let parsedObj = null;
+              if (match) {
+                try {
+                  parsedObj = JSON.parse(match[1]);
+                } catch (e2) {
+                  // Continue
+                }
+              }
+              if (!parsedObj) {
+                const firstBrace = resultText.indexOf('{');
+                const lastBrace = resultText.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace !== -1) {
+                  try {
+                    parsedObj = JSON.parse(resultText.substring(firstBrace, lastBrace + 1));
+                  } catch (e3) {
+                    // Continue
                   }
                 }
-              ]
+              }
+              if (!parsedObj) {
+                throw new Error(`فشل تنسيق وتحليل الرد من النموذج ${currentModel}.`);
+              }
+              data = parsedObj;
             }
-          ],
-          temperature: 0.1,
-          max_tokens: 1000,
-          response_format: { type: "json_object" }
-        })
-      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("OpenRouter Response Error:", errorText);
-        throw new Error(`خطأ من خادم OpenRouter: ${response.status} | ${errorText.substring(0, 100)}`);
+            // Successfully got the data!
+            break; // breaks out of inner format loop
+          } catch (err: any) {
+            lastError = err;
+            console.warn(`Model ${currentModel} with format ${currentFormat ? 'JSON' : 'Text'} failed:`, err);
+            // If it's the JSON format failing with non-400 error, we can still try the Text format
+            if (currentFormat) {
+              continue;
+            }
+          }
+        }
+
+        // If data is successfully retrieved, exit the models list loop
+        if (data) {
+          break;
+        }
       }
 
-      const resData = await response.json();
-      if (!resData?.choices || resData.choices.length === 0) {
-        throw new Error("لم يتم استلام رد من نموذج كوين للذكاء الاصطناعي.");
-      }
-
-      const resultText = resData.choices[0].message.content;
-      try {
-        data = JSON.parse(resultText);
-      } catch (jsonErr) {
-        console.error("Failed to parse JSON answer from Qwen:", resultText, jsonErr);
-        throw new Error("فشل في فك تشفير وتنسيق رد نموذج كوين. يرجى إعادة المحاولة.");
+      if (!data) {
+        throw new Error(lastError?.message || "فشلت جميع محاولات نماذج الذكاء الاصطناعي الذكية في تشخيص نبتتك.");
       }
       
       setProgress(100);
@@ -2967,7 +3044,7 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
         <div className="p-6 border-b flex justify-between items-center bg-green-50 z-20 relative">
           <div className="flex items-center space-x-reverse space-x-3">
             <Leaf className="text-green-600" size={24} />
-            <h2 className="text-xl font-black text-green-900">طبيب زون الذكي</h2>
+            <h2 className="text-xl font-black text-green-900">طبيب زون</h2>
           </div>
           <button onClick={() => { onClose(); setImage(null); setResult(null); setSource(null); }} className="p-2 hover:bg-green-100 rounded-full text-green-900">
             <X size={24} />
@@ -3012,38 +3089,87 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
 
           {loading && (
             <div className="flex flex-col items-center justify-center py-20 space-y-8 bg-white/50 backdrop-blur-sm rounded-[3rem] border border-green-100 shadow-xl mx-4">
-              <div className="relative w-40 h-40">
-                {/* Background Circle */}
-                <svg className="w-full h-full transform -rotate-90">
+              <div className="relative w-40 h-40 rounded-full border-4 border-green-200/50 bg-green-50/30 overflow-hidden shadow-inner flex items-center justify-center">
+                {/* Rising Water with Animated Waves inside */}
+                <motion.div 
+                  className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-700 via-blue-500 to-sky-400 z-0"
+                  initial={{ height: "0%" }}
+                  animate={{ height: `${progress}%` }}
+                  transition={{ duration: 0.5, ease: "linear" }}
+                />
+
+                {/* Waves overlay for realism */}
+                {progress > 0 && progress < 100 && (
+                  <>
+                    {/* First Wave */}
+                    <motion.div
+                      className="absolute left-0 right-0 h-6 bg-sky-300/40 opacity-70 rounded-[40%] z-0"
+                      style={{ bottom: `calc(${progress}% - 8px)` }}
+                      animate={{ 
+                        rotate: 360,
+                        x: [-10, 10, -10]
+                      }}
+                      transition={{ 
+                        rotate: { repeat: Infinity, duration: 6, ease: "linear" },
+                        x: { repeat: Infinity, duration: 3, ease: "easeInOut" }
+                      }}
+                    />
+                    {/* Second Wave */}
+                    <motion.div
+                      className="absolute left-0 right-0 h-6 bg-blue-400/30 opacity-60 rounded-[45%] z-0"
+                      style={{ bottom: `calc(${progress}% - 12px)` }}
+                      animate={{ 
+                        rotate: -360,
+                        x: [10, -10, 10]
+                      }}
+                      transition={{ 
+                        rotate: { repeat: Infinity, duration: 8, ease: "linear" },
+                        x: { repeat: Infinity, duration: 4, ease: "easeInOut" }
+                      }}
+                    />
+                  </>
+                )}
+
+                {/* Inner circular overlay border to make it look like a glass container */}
+                <div className="absolute inset-0 rounded-full border-[10px] border-white/20 pointer-events-none z-10" />
+
+                {/* SVG Progress Circle Border in front of everything */}
+                <svg className="absolute inset-0 w-full h-full transform -rotate-90 z-25 pointer-events-none">
+                  {/* Background Track */}
                   <circle
                     cx="80"
                     cy="80"
-                    r="70"
+                    r="72"
                     stroke="currentColor"
-                    strokeWidth="12"
+                    strokeWidth="8"
                     fill="transparent"
-                    className="text-green-100"
+                    className="text-green-100/10"
                   />
-                  {/* Progress Circle */}
+                  {/* Active Blue Progress indicator */}
                   <motion.circle
                     cx="80"
                     cy="80"
-                    r="70"
+                    r="72"
                     stroke="currentColor"
-                    strokeWidth="12"
+                    strokeWidth="8"
                     fill="transparent"
-                    strokeDasharray={440}
-                    initial={{ strokeDashoffset: 440 }}
-                    animate={{ strokeDashoffset: 440 - (440 * progress) / 100 }}
+                    strokeDasharray={452}
+                    initial={{ strokeDashoffset: 452 }}
+                    animate={{ strokeDashoffset: 452 - (452 * progress) / 100 }}
                     transition={{ duration: 0.5, ease: "linear" }}
                     strokeLinecap="round"
-                    className="text-green-600"
+                    className="text-blue-600"
                   />
                 </svg>
-                {/* Percentage Center */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black text-green-900">{Math.round(progress)}%</span>
-                  <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest mt-1">جاري التحليل</span>
+
+                {/* High Contrast, Premium Arabic Typography centered */}
+                <div className="relative z-30 flex flex-col items-center justify-center text-center">
+                  <span className="text-3xl font-black text-white select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
+                    {Math.round(progress)}%
+                  </span>
+                  <span className="text-[11px] font-bold text-yellow-300 tracking-wider mt-1 select-none drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)] uppercase">
+                    جاري التحليل
+                  </span>
                 </div>
               </div>
               
@@ -3224,6 +3350,8 @@ const fetchApiKeyFromGAS = async (): Promise<string | null> => {
                             </div>
                           )}
                         </motion.div>
+
+
 
                         {/* Staggered Royal Care Tips */}
                         {result.careTips && result.careTips.length > 0 && (
@@ -3456,6 +3584,8 @@ export default function App() {
   const [footerLine1, setFooterLine1] = useState<string | null>(null);
   const [footerLine2, setFooterLine2] = useState<string | null>(null);
   
+
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent Arrow keys from potentially triggering unintended navigation if requested
@@ -4346,7 +4476,6 @@ export default function App() {
                 <motion.button 
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={goBack} 
                   className="text-white p-2 hover:bg-red-800 rounded-2xl flex items-center gap-1.5 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.3)] bg-red-900/60 px-4 border border-white/20 active:translate-y-0.5"
                 >
@@ -4517,7 +4646,6 @@ export default function App() {
             >
               <motion.button
                 whileHover={{ scale: 1.02, boxShadow: "0 15px 40px rgba(37,99,235,0.5)" }}
-                whileTap={{ scale: 0.95 }}
                 onClick={() => setIsCartDrawerOpen(true)}
                 className="w-full h-20 bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800 text-white rounded-3xl font-black text-2xl shadow-[0_10px_30px_rgba(37,99,235,0.4)] border-4 border-white/20 flex items-center justify-center space-x-reverse space-x-4 relative overflow-hidden group"
               >
@@ -4577,7 +4705,6 @@ export default function App() {
               {/* Zoon Doctor Diagnosis Button - Half Width */}
               <motion.button
                 whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
                 onClick={() => setIsDiagnosisOpen(true)}
                 className="flex-1 h-12 bg-[#2E7D32] text-white rounded-2xl font-black text-xs shadow-[0_4px_0_#1B5E20,0_6px_10px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center border-b-2 border-white/10 relative overflow-hidden group active:translate-y-[2px] active:shadow-[0_1px_0_#1B5E20,0_2px_4px_rgba(0,0,0,0.1)] transition-all"
               >
@@ -4682,7 +4809,6 @@ export default function App() {
                 <p className={`font-bold mb-8 max-w-sm ${isProductView ? 'text-blue-100/70' : 'text-gray-600'}`}>{networkError}</p>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     setNetworkError(null);
                     setLoading(true);
@@ -4769,7 +4895,6 @@ export default function App() {
               {websiteUrl && websiteUrl.startsWith('http') && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => window.open(websiteUrl, '_blank')}
                   className={`w-full max-w-md h-20 p-4 border-2 rounded-[2.5rem] shadow-2xl flex items-center gap-4 group transition-all backdrop-blur-md ${isProductView ? 'bg-white/10 border-white/10' : 'bg-white border-green-50'}`}
                 >
