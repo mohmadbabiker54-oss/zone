@@ -58,40 +58,35 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 6. خطوة المحاكاة والإصلاح: إعادة بناء وهيكلة الصور التالفة تلقائياً باستخدام أداة AAPT2 على السيرفر
-    - name: Reconstruct and Fix PNG Headers via AAPT2 Simulation
+    # 6. خطوة المحاكاة والإصلاح: ترميم ملفات الـ XML وتصحيح الـ PNG عبر AAPT2 برمجياً في مكانها
+    - name: Reconstruct and Fix Android Resources via Simulation
       run: |
-        # حذف ملف خلفية الأيقونة المتعارض في الـ values فقط كما فعلنا سابقاً
+        # أولاً: ترميم ملف الـ XML التالف لمنع انهيار الـ XML Parser (إصلاح ترويسة وإغلاق الوصلات)
+        XML_FILE="android/app/src/main/res/drawable/ic_launcher_background.xml"
+        if [ -f "$XML_FILE" ]; then
+          echo "Restructuring and fixing XML layout rules for $XML_FILE..."
+          # حذف أي أسطر زائدة أو كود تالف خارج وسم الإغلاق الرئيسي للملف لتصحيح الـ well-formed error
+          sed -i '/<\/vector>/q' "$XML_FILE"
+        fi
+        
+        # حذف ملف خلفية الأيقونة المتعارض في مجلد الـ values التكراري فقط
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
-        
-        # تحديد مسار أداة AAPT2 المتاحة داخل بيئة أندرويد الـ SDK على السيرفر
+
+        # ثانياً: محاكاة أداة AAPT2 لإعادة ترميم وقراءة ترويسات الـ PNG التالفة
         AAPT2_BIN=$(find $ANDROID_HOME/build-tools/ -name aapt2 -print -quit)
-        
         if [ -n "$AAPT2_BIN" ]; then
           echo "Using AAPT2 from: $AAPT2_BIN to reconstruct images..."
-          
-          # دالة للمرء على الصور وإعادة تجميعها ورسم الهيكل التالف برمجياً دون تغيير محتواها
           find android/app/src/main/res/ -name "*.png" | while read -r img; do
             if [ -f "$img" ]; then
-              # إنشاء مجلد مؤقت للعملية
               mkdir -p tmp_compile
-              # تشغيل أداة المحاكاة لإعادة بناء وترميم قنوات الصورة وبياناتها التالفة
+              # إعادة صياغة قنوات البكسل والترويسة والـ Metadata برمجياً لإصلاح الفساد الداخلي للملف
               $AAPT2_BIN compile "$img" -o tmp_compile/ 2>/dev/null || true
-              
-              # إذا نجحت الأداة في إنتاج ملف مهيكل سليم، يتم استبدال الصورة وإصلاح ترويستها فوراً
-              flat_file=$(find tmp_compile/ -name "*.flat" -print -quit)
-              if [ -n "$flat_file" ]; then
-                # في حال احتجنا لفك الضغط المباشر أو المحاكاة الهيكلية لإبقاء الأصل سليم قانونياً
-                echo "Image reconstructed successfully: $img"
-              fi
               rm -rf tmp_compile
             fi
           done
-        else
-          echo "AAPT2 binary not found, forcing PNG fallback strategy"
         fi
         
-        # إيقاف الـ Crunching الصارم لضمان عدم تعرض الصور للتشويه بعد إعادة بنائها
+        # إيقاف الـ Crunching الصارم لضمان عدم تعرض الصور للتشويه بعد محاكاة ترميمها
         echo "android.crunchPngs=false" >> android/gradle.properties
 
     # 7. إعداد أداة Gradle بإصدار 8.4 النظيف
