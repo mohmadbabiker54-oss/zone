@@ -23,23 +23,33 @@ jobs:
         java-version: '17'
         distribution: 'zulu'
 
-    # 3. إعداد أداة Gradle الرسمية بشكل نظيف وتلقائي على السيرفر
+    # 3. إعداد بيئة Node.js (ضرورية جداً لتثبيت مكتبات Capacitor الحاكمة)
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18' # إصدار مستقر ومتوافق جداً مع مشروعك
+
+    # 4. تثبيت مكتبات المشروع (npm install) لتوليد مجلد node_modules المفقود
+    - name: Install Project Dependencies
+      run: npm install
+
+    # 5. إعداد أداة Gradle الرسمية بشكل نظيف تلقائياً
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
-        gradle-version: wrapper # سيحاول قراءة الإصدار المطلوب أو تثبيت أحدث إصدار متوافق
+        gradle-version: wrapper
 
-    # 4. بناء ملف الـ APK (باستخدام أمر gradle المباشر المتاح على السيرفر)
+    # 6. بناء ملف الـ APK
     - name: Compile and Build APK
       run: gradle assembleDebug
       working-directory: ./android
 
-    # 5. بناء ملف الـ AAB للمتجر
+    # 7. بناء ملف الـ AAB للمتجر
     - name: Compile and Build App Bundle (AAB)
       run: gradle bundleRelease
       working-directory: ./android
 
-    # 6. استخراج وحفظ ملف الـ APK كمخرج للتحميل
+    # 8. استخراج وحفظ ملف الـ APK كمخرج للتحميل
     - name: Archive and Upload APK
       uses: actions/upload-artifact@v4
       with:
@@ -47,7 +57,7 @@ jobs:
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
 
-    # 7. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
+    # 9. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
     - name: Archive and Upload AAB
       uses: actions/upload-artifact@v4
       with:
