@@ -33,7 +33,7 @@ jobs:
     - name: Install Project Dependencies
       run: npm install --legacy-peer-deps
 
-    # 5. حل تعارض مكتبة core-ktx بشكل حاسم وشامل لكل المشاريع الفرعية والـ Plugins
+    # 5. حل تعارض مكتبة core-ktx وإجبارها على إصدار متوافق مع إعدادات مشروعك
     - name: Enforce Compatible Core-Ktx Version
       run: |
         cat << 'EOF' >> android/build.gradle
@@ -45,23 +45,28 @@ jobs:
         }
         EOF
 
-    # 6. إعداد أداة Gradle بإصدار 8.4 النظيف
+    # 6. خطوة حاسمة: حذف ملف الأيقونة المكرر لتفادي خطأ الـ Duplicate Resources
+    - name: Fix Duplicate Launcher Background Resource
+      run: |
+        rm -f android/app/src/main/res/values/ic_launcher_background.xml
+
+    # 7. إعداد أداة Gradle بإصدار 8.4 النظيف
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.4'
 
-    # 7. بناء ملف الـ APK (باستخدام أمر gradle المباشر المتاح على السيرفر)
+    # 8. بناء ملف الـ APK
     - name: Compile and Build APK
       run: gradle assembleDebug
       working-directory: ./android
 
-    # 8. بناء ملف الـ AAB للمتجر
+    # 9. بناء ملف الـ AAB للمتجر
     - name: Compile and Build App Bundle (AAB)
       run: gradle bundleRelease
       working-directory: ./android
 
-    # 9. استخراج وحفظ ملف الـ APK كمخرج للتحميل
+    # 10. استخراج وحفظ ملف الـ APK كمخرج للتحميل
     - name: Archive and Upload APK
       uses: actions/upload-artifact@v4
       with:
@@ -69,7 +74,7 @@ jobs:
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
 
-    # 10. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
+    # 11. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
     - name: Archive and Upload AAB
       uses: actions/upload-artifact@v4
       with:
