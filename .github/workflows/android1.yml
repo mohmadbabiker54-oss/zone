@@ -1,0 +1,56 @@
+name: Build Android Production App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Generate APK and AAB Packages
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. جلب الأكواد من المستودع
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    # 2. إعداد بيئة جافا (JDK 17)
+    - name: Set up Java Development Kit (JDK 17)
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'zulu'
+        cache: gradle
+
+    # 3. إعطاء صلاحية التنفيذ لأداة البناء (داخل مجلد android)
+    - name: Grant Execute Permission for Gradlew
+      run: chmod +x ./gradlew
+      working-directory: ./android
+
+    # 4. بناء ملف الـ APK (داخل مجلد android)
+    - name: Compile and Build APK
+      run: ./gradlew assembleDebug
+      working-directory: ./android
+
+    # 5. بناء ملف الـ AAB للمتجر (داخل مجلد android)
+    - name: Compile and Build App Bundle (AAB)
+      run: ./gradlew bundleRelease
+      working-directory: ./android
+
+    # 6. استخراج وحفظ ملف الـ APK كمخرج للتحميل
+    - name: Archive and Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: GoogleStudio-App-Debug-APK
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 7
+
+    # 7. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
+    - name: Archive and Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: GoogleStudio-App-Production-AAB
+        path: android/app/build/outputs/bundle/release/app-release*.aab
+        retention-days: 7
