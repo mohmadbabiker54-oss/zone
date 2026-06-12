@@ -23,15 +23,15 @@ jobs:
         java-version: '17'
         distribution: 'zulu'
 
-    # 3. إعداد بيئة Node.js (ضرورية جداً لتثبيت مكتبات Capacitor الحاكمة)
+    # 3. إعداد بيئة Node.js
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18' # إصدار مستقر ومتوافق جداً مع مشروعك
+        node-version: '18'
 
-    # 4. تثبيت مكتبات المشروع (npm install) لتوليد مجلد node_modules المفقود
+    # 4. تثبيت مكتبات المشروع مع تخطي تعارض الإصدارات (تم التحديث هنا)
     - name: Install Project Dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
 
     # 5. إعداد أداة Gradle الرسمية بشكل نظيف تلقائياً
     - name: Setup Gradle
