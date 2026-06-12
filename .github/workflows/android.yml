@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. جلب الأكواد من المستودع
+    # 1.جلب الأكواد من المستودع
     - name: Checkout Source Code
       uses: actions/checkout@v4
       
