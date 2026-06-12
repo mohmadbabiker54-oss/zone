@@ -29,15 +29,15 @@ jobs:
       with:
         node-version: '18'
 
-    # 4. تثبيت مكتبات المشروع مع تخطي تعارض الإصدارات (تم التحديث هنا)
+    # 4. تثبيت مكتبات المشروع مع تخطي تعارض الإصدارات
     - name: Install Project Dependencies
       run: npm install --legacy-peer-deps
 
-    # 5. إعداد أداة Gradle الرسمية بشكل نظيف تلقائياً
+    # 5. إعداد أداة Gradle بإصدار مستقر ومتوافق مع مشروعك (تم التحديث هنا ليتناسب مع 8.2.1)
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
-        gradle-version: wrapper
+        gradle-version: '8.4' # فرض استخدام إصدار 8 المستقر لمنع مشاكل التوافقية مع Gradle 9
 
     # 6. بناء ملف الـ APK
     - name: Compile and Build APK
