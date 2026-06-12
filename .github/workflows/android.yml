@@ -33,8 +33,8 @@ jobs:
     - name: Install Project Dependencies
       run: npm install --legacy-peer-deps
 
-    # 5. معالجة وحل تعارضات الأكواد وإعدادات الـ SDK وصلاحيات MainActivity تلقائياً
-    - name: Enforce Compatible Configuration and Fix MainActivity
+    # 5. معالجة وتخطي أخطاء الصور التالفة (AAPT) وإعدادات الـ SDK وصلاحيات MainActivity
+    - name: Enforce Compatible Configuration and Fix Source Code
       run: |
         # فرض إصدارات مكتبة أندرويد المستقرة
         cat << 'EOF' >> android/build.gradle
@@ -46,19 +46,23 @@ jobs:
         }
         EOF
         
+        # تعطيل ميزة كبس وتدقيق الصور الصارمة لمنع انهيار AAPT2 بسبب الصور التالفة
+        echo "android.crunchPngs=false" >> android/gradle.properties
+        echo "android.useAapt2=true" >> android/gradle.properties
+        
         # تحديث قيمة minSdkVersion لتتوافق مع معايير كاباسيتور الحديثة
         if [ -f android/variables.gradle ]; then
           sed -i 's/minSdkVersion = .*/minSdkVersion = 24/g' android/variables.gradle
         fi
         sed -i 's/minSdkVersion .*/minSdkVersion 24/g' android/app/build.gradle
         
-        # خطوة حاسمة: إصلاح صلاحيات دالة onStart في كلاس MainActivity لتصبح public وتتخطى خطأ التجميع
+        # إصلاح صلاحيات دالة onStart في كلاس MainActivity لتصبح public وتتخطى خطأ التجميع
         MAIN_ACTIVITY_PATH="android/app/src/main/java/com/zoon/agri/app/MainActivity.java"
         if [ -f "$MAIN_ACTIVITY_PATH" ]; then
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 6. إصلاح وحذف ملف الأيقونة المعطوب من الـ values والـ drawable لضمان بناء نظيف
+    # 6. إصلاح وحذف ملف الأيقونة المكرر والمعطوب من الـ values والـ drawable لضمان بناء نظيف
     - name: Fix and Clean Launcher Background XML
       run: |
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
