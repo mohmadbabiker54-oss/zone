@@ -33,9 +33,10 @@ jobs:
     - name: Install Project Dependencies
       run: npm install --legacy-peer-deps
 
-    # 5. حل تعارض مكتبة core-ktx وإجبارها على إصدار متوافق مع إعدادات مشروعك
-    - name: Enforce Compatible Core-Ktx Version
+    # 5. ترقية الـ minSdkVersion ليتوافق مع مكتبة Cordova وحل تعارض core-ktx
+    - name: Enforce Compatible Core-Ktx and MinSDK Versions
       run: |
+        # فرض إصدارات مكتبة أندرويد المستقرة
         cat << 'EOF' >> android/build.gradle
         subprojects {
             configurations.all {
@@ -44,14 +45,17 @@ jobs:
             }
         }
         EOF
+        
+        # تحديث قيمة minSdkVersion إلى 24 تلقائياً لتتوافق مع معايير كوردوفا وكاباسيتور الحديثة
+        if [ -f android/variables.gradle ]; then
+          sed -i 's/minSdkVersion = .*/minSdkVersion = 24/g' android/variables.gradle
+        fi
+        sed -i 's/minSdkVersion .*/minSdkVersion 24/g' android/app/build.gradle
 
-    # 6. خطوة حاسمة: إصلاح وحذف ملف الأيقونة المعطوب من الـ values والـ drawable لضمان بناء نظيف
+    # 6. إصلاح وحذف ملف الأيقونة المعطوب من الـ values والـ drawable لضمان بناء نظيف
     - name: Fix and Clean Launcher Background XML
       run: |
-        # حذف الملف من مجلد القيم التكراري
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
-        
-        # إنشاء ملف drawable بديل سليم وصحيح برمجياً بلون افتراضي أبيض لتفادي خطأ الـ XML المعطوب
         mkdir -p android/app/src/main/res/drawable
         cat << 'EOF' > android/app/src/main/res/drawable/ic_launcher_background.xml
         <?xml version="1.0" encoding="utf-8"?>
