@@ -1,50 +1,56 @@
-name: Build Android App (APK & AB)
+name: Build Android Production App
 
 on:
   push:
     branches:
-      - main # أو master حسب اسم الفرع الرئيسي لديك
-  pull_request:
-    branches:
       - main
-  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً من موقع GitHub
+  workflow_dispatch:
 
 jobs:
   build:
+    name: Generate APK and AAB Packages
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
+    # 1. جلب الأكواد من المستودع
+    - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    - name: Set up JDK 17
+    # 2. إعداد بيئة جافا (JDK 17)
+    - name: Set up Java Development Kit (JDK 17)
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'zulu'
-        cache: gradle
 
-    - name: Grant Execute Permission for Gradlew
-      run: chmod +x gradlew
+    # 3. إعداد أداة Gradle الرسمية بشكل نظيف وتلقائي على السيرفر
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: wrapper # سيحاول قراءة الإصدار المطلوب أو تثبيت أحدث إصدار متوافق
 
-    # 1. بناء ملف الـ APK (نسخة الـ Debug للتجربة)
-    - name: Build APK
-      run: ./gradlew assembleDebug
+    # 4. بناء ملف الـ APK (باستخدام أمر gradle المباشر المتاح على السيرفر)
+    - name: Compile and Build APK
+      run: gradle assembleDebug
+      working-directory: ./android
 
-    # 2. بناء ملف الـ AAB (نسخة الـ Release للمتجر)
-    - name: Build AAB
-      run: ./gradlew bundleRelease
+    # 5. بناء ملف الـ AAB للمتجر
+    - name: Compile and Build App Bundle (AAB)
+      run: gradle bundleRelease
+      working-directory: ./android
 
-    # 3. رفع وحفظ ملف الـ APK كمخرج للعملية (Artifact)
-    - name: Upload APK Artifact
+    # 6. استخراج وحفظ ملف الـ APK كمخرج للتحميل
+    - name: Archive and Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: GoogleStudio-App-Debug-APK
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 7
 
-    # 4. رفع وحفظ ملف الـ AAB كمخرج للعملية (Artifact)
-    - name: Upload AAB Artifact
+    # 7. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
+    - name: Archive and Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-aab
-        path: app/build/outputs/bundle/release/app-release.aab
+        name: GoogleStudio-App-Production-AAB
+        path: android/app/build/outputs/bundle/release/app-release*.aab
+        retention-days: 7
