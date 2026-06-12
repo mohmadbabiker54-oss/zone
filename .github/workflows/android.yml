@@ -33,23 +33,29 @@ jobs:
     - name: Install Project Dependencies
       run: npm install --legacy-peer-deps
 
-    # 5. إعداد أداة Gradle بإصدار مستقر ومتوافق مع مشروعك (تم التحديث هنا ليتناسب مع 8.2.1)
+    # 5. خطوة ذكية: حل تعارض مكتبة core-ktx وإجبارها على إصدار متوافق مع أندرويد 35 و 34
+    - name: Enforce Compatible Core-Ktx Version
+      run: |
+        echo "configurations.all { resolutionStrategy.force 'androidx.core:core-ktx:1.13.1' }" >> android/build.gradle
+        echo "configurations.all { resolutionStrategy.force 'androidx.core:core:1.13.1' }" >> android/build.gradle
+
+    # 6. إعداد أداة Gradle بإصدار 8.4 المستقر والمتوافق
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
-        gradle-version: '8.4' # فرض استخدام إصدار 8 المستقر لمنع مشاكل التوافقية مع Gradle 9
+        gradle-version: '8.4'
 
-    # 6. بناء ملف الـ APK
+    # 7. بناء ملف الـ APK
     - name: Compile and Build APK
       run: gradle assembleDebug
       working-directory: ./android
 
-    # 7. بناء ملف الـ AAB للمتجر
+    # 8. بناء ملف الـ AAB للمتجر
     - name: Compile and Build App Bundle (AAB)
       run: gradle bundleRelease
       working-directory: ./android
 
-    # 8. استخراج وحفظ ملف الـ APK كمخرج للتحميل
+    # 9. استخراج وحفظ ملف الـ APK كمخرج للتحميل
     - name: Archive and Upload APK
       uses: actions/upload-artifact@v4
       with:
@@ -57,7 +63,7 @@ jobs:
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
 
-    # 9. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
+    # 10. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
     - name: Archive and Upload AAB
       uses: actions/upload-artifact@v4
       with:
