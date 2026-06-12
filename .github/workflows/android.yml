@@ -58,8 +58,8 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 6. خطوة المحاكاة وإعادة الرسم: إعادة معالجة وهيكلة قنوات قراءة الـ PNG الأصلية دون تغيير محتواها
-    - name: Simulate and Reconstruct Corrupt PNG Bitstreams
+    # 6. خطوة المعالجة السحرية: إعادة ترميز ورسم الصور التالفة حقيقياً باستخدام ImageMagick
+    - name: Re-render and Transcode Corrupt PNGs via ImageMagick
       run: |
         # ترميم ملف الـ XML التالف لمنع انهيار الـ XML Parser
         XML_FILE="android/app/src/main/res/drawable/ic_launcher_background.xml"
@@ -69,19 +69,17 @@ jobs:
         
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
         
-        # استخدام أداة PNG المدمجة في السيرفر لإعادة محاكاة رسم الصور وتطهير الـ Headers التالفة في مكانها
-        sudo apt-get update && sudo apt-get install -y pngcrush
-        
-        echo "Starting PNG structural reconstruction..."
+        echo "Starting advanced ImageMagick image transcoding..."
+        # البحث عن كل ملفات الـ PNG وإعادة تجميع مصفوفة الألوان الخاصة بها وبنائها بصيغة نياية حقيقية
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
           if [ -f "$img" ]; then
-            echo "Re-rendering image structure: $img"
-            # أداة pngcrush تقوم بإعادة كتابة قنوات ومصفوفات الألوان وتصحيح الفساد الداخلي للملف مع الحفاظ التام على الصورة الأصلية
-            pngcrush -ow -rem allb -reduce "$img" 2>/dev/null || true
+            echo "Re-rendering and enforcing standard PNG format for: $img"
+            # الأمر "convert" يفك شفرة الصورة أياً كانت حالتها ويعيد كتابتها كـ PNG سليم بهيكل بايتات معياري
+            convert "$img" png:"$img" 2>/dev/null || true
           fi
         done
         
-        # منع الـ AAPT من محاولة كبس إضافي للصور بعد معالجتها
+        # إيقاف الـ Crunching الصارم لمنع AAPT2 من تعديل الملفات المعاد تدويرها
         echo "android.crunchPngs=false" >> android/gradle.properties
 
     # 7. إعداد أداة Gradle بإصدار 8.4 النظيف
