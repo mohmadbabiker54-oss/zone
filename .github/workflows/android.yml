@@ -68,7 +68,7 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 8. خطوة المعالجة الحاسمة: تطهير شاشات الـ Splash وإعادة بناء الأيقونات من تصميمك الحقيقي
+    # 8. خطوة المعالجة الحاسمة: فحص واصطياد أول أيقونة سليمة وتعميمها وتطهير شاشات الـ Splash
     - name: Install Environment Dependencies and Force Reconstruct Bitmaps From Real Icon
       run: |
         # تثبيت أداة ImageMagick لتوفير أمر convert على السيرفر
@@ -83,24 +83,33 @@ jobs:
         
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
         
-        echo "Locating and protecting the real application icon source..."
+        echo "Scanning for a valid, non-corrupted application icon source..."
         
-        # تتبع أيقونة التطبيق الحقيقية الخاصة بك في الكثافة الأعلى كمصدر نقي للتصميم
-        REAL_ICON_SOURCE="android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
-        
-        # خطة تأمين: إذا لم تكن متوفرة في xxxhdpi، نبحث عنها في باقي مجلدات الـ mipmap للامساك بها
-        if [ ! -f "$REAL_ICON_SOURCE" ]; then
-          REAL_ICON_SOURCE=$(find android/app/src/main/res/mipmap-* -name "ic_launcher.png" | head -n 1)
+        REAL_ICON_SOURCE=""
+        # البحث في جميع ملفات الأيقونات وفحص سلامة الـ Header الخاص بها برمجياً
+        find android/app/src/main/res/mipmap-* -name "ic_launcher.png" | while read -r img; do
+          if [ -f "$img" ]; then
+            if identify "$img" >/dev/null 2>&1; then
+              echo "Found valid source icon: $img"
+              echo "$img" > valid_path.txt
+              break
+            fi
+          fi
+        done
+
+        if [ -f valid_path.txt ]; then
+          REAL_ICON_SOURCE=$(cat valid_path.txt)
+          rm -f valid_path.txt
         fi
         
-        echo "Master Icon Source Selected: $REAL_ICON_SOURCE"
-        
-        # تنظيف البايتات للملف المصدر الحقيقي لضمان زوال التلف وتحويله لـ PNG نقي وخالص
-        if [ -f "$REAL_ICON_SOURCE" ]; then
+        # إذا وجدنا ملفاً سليماً نقوم بتطهيره، وإذا كانت كل الملفات المرفوعة تالفة نقوم بتوليد أيقونة بديلة ذكية
+        if [ -n "$REAL_ICON_SOURCE" ] && [ -f "$REAL_ICON_SOURCE" ]; then
+          echo "Master Icon Source Verified and Selected: $REAL_ICON_SOURCE"
           convert "$REAL_ICON_SOURCE" -strip png24:master_icon_clean.png
         else
-          # ملجأ أخير في حال عدم وجود أي صورة أيقونة على السيرفر
-          convert -size 512x512 xc:"#2E7D32" -strip png24:master_icon_clean.png
+          echo "Warning: All provided icons are strictly corrupted. Generating a smart dynamic brand icon..."
+          # توليد أيقونة بديلة تحمل روح الهوية الزراعية والتكنولوجية للمشروع بدلاً من لون سادة مصمت
+          convert -size 512x512 xc:"#1B5E20" -fill "#81C784" -draw "circle 256,256 256,400" -fill "#FFFFFF" -pointsize 90 -gravity center -draw "text 0,0 'ZONE'" -strip png24:master_icon_clean.png
         fi
 
         # دالة ترميم وتأمين شاشات الـ Splash للعبور الصافي من أداة AAPT2
@@ -111,7 +120,7 @@ jobs:
           if [ -f "$target_path" ]; then
             convert "$target_path" -strip png24:temp_splash.png 2>/dev/null || true
             if [ ! -s temp_splash.png ]; then
-              convert -size ${default_width}x${default_height} xc:"#2E7D32" -strip png24:temp_splash.png
+              convert -size ${default_width}x${default_height} xc:"#1B5E20" -strip png24:temp_splash.png
             fi
             rm -f "$target_path"
             mv temp_splash.png "$target_path"
@@ -119,13 +128,12 @@ jobs:
           fi
         }
 
-        # دالة توليد وبناء الأيقونات بجميع الكثافات والأبعاد انطلاقاً من التصميم الحقيقي النظيف
+        # دالة توليد وبناء الأيقونات بجميع الكثافات والأبعاد انطلاقاً من التصميم النظيف المستقر
         generate_real_icon() {
           local target_path="$1"
           local size="$2"
           
           echo "Generating clean PNG dimension (${size}x${size}) for: $target_path"
-          # إعادة تحجيم الأيقونة الحقيقية بدقة لتعويض الملف التالف بالبنية الجديدة النظيفة
           convert master_icon_clean.png -resize ${size}x${size} -strip png24:temp_icon.png
           
           rm -f "$target_path"
@@ -147,7 +155,7 @@ jobs:
         fix_splash "android/app/src/main/res/drawable-port-xhdpi/splash.png" 480 640
         fix_splash "android/app/src/main/res/drawable-land-xhdpi/splash.png" 640 480
         
-        # 2. توليد مصفوفة الأيقونات (ic_launcher) بالكامل اعتماداً على أيقونتك الحقيقية النظيفة
+        # 2. توليد مصفوفة الأيقونات (ic_launcher) بالكامل اعتماداً على المصدر النظيف المكتشف
         # طبقة mdpi (48x48)
         generate_real_icon "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48
         generate_real_icon "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png" 48
