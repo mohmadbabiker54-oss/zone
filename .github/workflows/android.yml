@@ -16,7 +16,7 @@ jobs:
     - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    # 2. إعداد بيئة جافا الحديثة (JDK 21)
+    # 2. إعداد بيئة جافا الحديثة والمستقرة (JDK 21)
     - name: Set up Java Development Kit (JDK 21)
       uses: actions/setup-java@v4
       with:
@@ -70,11 +70,9 @@ jobs:
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
         
         echo "Starting advanced ImageMagick image transcoding..."
-        # البحث عن كل ملفات الـ PNG وإعادة تجميع مصفوفة الألوان الخاصة بها وبنائها بصيغة نياية حقيقية
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
           if [ -f "$img" ]; then
             echo "Re-rendering and enforcing standard PNG format for: $img"
-            # الأمر "convert" يفك شفرة الصورة أياً كانت حالتها ويعيد كتابتها كـ PNG سليم بهيكل بايتات معياري
             convert "$img" png:"$img" 2>/dev/null || true
           fi
         done
@@ -82,18 +80,19 @@ jobs:
         # إيقاف الـ Crunching الصارم لمنع AAPT2 من تعديل الملفات المعاد تدويرها
         echo "android.crunchPngs=false" >> android/gradle.properties
 
-    # 7. إعداد أداة Gradle بإصدار 8.4 النظيف
+    # 7. إعداد أداة Gradle المركزية بإصدار 8.4 النظيف وتخطي الـ Wrapper التالف
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.4'
+        cache-disabled: false
 
-    # 8. بناء ملف الـ APK
+    # 8. بناء ملف الـ APK باستخدام أمر Gradle المركزي الصافي للتغلب على ملف الـ jar المعطوب
     - name: Compile and Build APK
       run: gradle assembleDebug
       working-directory: ./android
 
-    # 9. بناء ملف الـ AAB للمتجر
+    # 9. بناء ملف الـ AAB للمتجر باستخدام أمر Gradle المركزي الصافي
     - name: Compile and Build App Bundle (AAB)
       run: gradle bundleRelease
       working-directory: ./android
