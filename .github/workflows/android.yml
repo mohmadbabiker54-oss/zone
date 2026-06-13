@@ -58,8 +58,8 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 6. خطوة المعالجة السحرية: إعادة البناء الهيكلي والتطهير الحقيقي للـ PNG والـ XML لمنع انهيار AAPT2
-    - name: Radical Re-rendering of Corrupt PNGs via Transcoding Simulation
+    # 6. محاكاة المعالجة الكاملة: إعادة توليد ورسم الهيكل الصوري خارجياً ثم حقنه في المشروع
+    - name: Isolate, Re-render, and Force Inject Standard PNGs
       run: |
         # ترميم ملف الـ XML التالف لمنع انهيار الـ XML Parser
         XML_FILE="android/app/src/main/res/drawable/ic_launcher_background.xml"
@@ -69,14 +69,22 @@ jobs:
         
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
         
-        echo "Starting radical image reconstruction using forced transcoding..."
-        # البحث عن كل ملفات الـ PNG وإعادة كتابة هيكل البايتات الخاص بها للتأكد من سلامة الـ Magic Bytes
+        echo "Executing total isolation and reconstruction of corrupt resources..."
+        # المرور على كل الصور وإعادة معالجتها عبر مجلد وسيط لكسر أي قيود على الملف الأصلي
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
           if [ -f "$img" ]; then
-            echo "Re-encoding image bytes to strict PNG format: $img"
-            # الخيار +set date:create +set date:modify يزيل أي أخطاء ميتاداتا تالفة
-            # والتحويل الصريح يحقن ترويسة الـ PNG الرسمية فوق الملف الأصلي محاكاة للحل المستقر
-            convert "$img" +set date:create +set date:modify -background none -strip png24:"$img" 2>/dev/null || true
+            echo "Processing: $img"
+            # فك وتوليد البكسلات على ورقة عمل نظيفة وحفظها مؤقتاً كـ PNG صريح
+            convert "$img" -strip png24:reconstructed_tmp.png 2>/dev/null || true
+            
+            # حظر وجود ملفات صفرية وحقن الصورة المولدة الجديدة مكان القديمة المكسورة بصلاحيات كاملة
+            if [ -s reconstructed_tmp.png ]; then
+              rm -f "$img"
+              mv reconstructed_tmp.png "$img"
+              chmod 664 "$img"
+            else
+              rm -f reconstructed_tmp.png
+            fi
           fi
         done
         
