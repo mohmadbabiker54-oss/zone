@@ -98,15 +98,18 @@ jobs:
           fi
         }
 
-        # تطبيق استراتيجية إعادة الهيكلة الفورية على الملفات المسببة لانهيار AAPT2 بالمسارات والأبعاد المحددة
+        # الدفعة الأولى المستقرة سابقاً
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48 48
         fix_bitmap "android/app/src/main/res/drawable-port-mdpi/splash.png" 320 480
         fix_bitmap "android/app/src/main/res/drawable-land-xxxhdpi/splash.png" 1920 1280
-        
-        # إضافة المسارات الجديدة التي ظهرت في الـ Log الأخير لضمان تطهيرها صراحة بالاسم والأبعاد المعيارية
         fix_bitmap "android/app/src/main/res/drawable-port-hdpi/splash.png" 480 800
         fix_bitmap "android/app/src/main/res/drawable-land-hdpi/splash.png" 800 480
         fix_bitmap "android/app/src/main/res/drawable-land-mdpi/splash.png" 480 320
+        
+        # الدفعة الثانية الجديدة المكتشفة في الـ Log الأخير (حقن فوري ومباشر بالأبعاد المعيارية)
+        fix_bitmap "android/app/src/main/res/drawable/splash.png" 640 960
+        fix_bitmap "android/app/src/main/res/drawable-port-xxhdpi/splash.png" 960 1600
+        fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png" 144 144
         
         # فحص وتطهير باقي صور الـ PNG في المشروع لضمان السلامة الكاملة
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
