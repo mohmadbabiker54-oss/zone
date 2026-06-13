@@ -5,7 +5,7 @@ on:
     branches:
       - main
   workflow_dispatch:
-  
+
 jobs:
   build:
     name: Generate APK and AAB Packages
@@ -43,7 +43,7 @@ jobs:
       run: |
         npx cap sync android
 
-    # 7. تطبيق الإعدادات المتوافقة وحذف الملفات المتكررة تلقائياً
+    # 7. تطبيق الإعدادات المتوافقة وسحق الملفات المتكررة والتالفة تلقائياً
     - name: Enforce Compatible Configuration and Fix Source Code
       run: |
         # فرض إصدارات مكتبة أندرويد المستقرة لتجنب تعارضات كاباسيتور
@@ -68,8 +68,9 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-        # سحق التكرار المسبب للخطأ: حذف ملف التداخل لتظل القيمة النظيفة في colors.xml فقط
+        # سحق التكرار والتلف: حذف ملفات الخلفية المتجهة المسببة للمشاكل ليعتمد النظام على أيقوناتك الـ PNG الصافية
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
+        rm -f android/app/src/main/res/drawable/ic_launcher_background.xml
 
     # 8. إعداد أداة Gradle المركزية بالنسخة 8.4 المستقرة
     - name: Setup Gradle
