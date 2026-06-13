@@ -58,8 +58,8 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 6. خطوة المعالجة السحرية: إعادة ترميز ورسم الصور التالفة حقيقياً باستخدام ImageMagick
-    - name: Re-render and Transcode Corrupt PNGs via ImageMagick
+    # 6. خطوة المعالجة السحرية: إعادة البناء الهيكلي والتطهير الحقيقي للـ PNG والـ XML لمنع انهيار AAPT2
+    - name: Radical Re-rendering of Corrupt PNGs via Transcoding Simulation
       run: |
         # ترميم ملف الـ XML التالف لمنع انهيار الـ XML Parser
         XML_FILE="android/app/src/main/res/drawable/ic_launcher_background.xml"
@@ -69,35 +69,42 @@ jobs:
         
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
         
-        echo "Starting advanced ImageMagick image transcoding..."
+        echo "Starting radical image reconstruction using forced transcoding..."
+        # البحث عن كل ملفات الـ PNG وإعادة كتابة هيكل البايتات الخاص بها للتأكد من سلامة الـ Magic Bytes
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
           if [ -f "$img" ]; then
-            echo "Re-rendering and enforcing standard PNG format for: $img"
-            convert "$img" png:"$img" 2>/dev/null || true
+            echo "Re-encoding image bytes to strict PNG format: $img"
+            # الخيار +set date:create +set date:modify يزيل أي أخطاء ميتاداتا تالفة
+            # والتحويل الصريح يحقن ترويسة الـ PNG الرسمية فوق الملف الأصلي محاكاة للحل المستقر
+            convert "$img" +set date:create +set date:modify -background none -strip png24:"$img" 2>/dev/null || true
           fi
         done
         
-        # إيقاف الـ Crunching الصارم لمنع AAPT2 من تعديل الملفات المعاد تدويرها
+        # إيقاف خيارات الفحص المضغوط المسببة للأخطاء في gradle
         echo "android.crunchPngs=false" >> android/gradle.properties
 
-    # 7. إعداد أداة Gradle المركزية بإصدار 8.4 النظيف وتخطي الـ Wrapper التالف
+    # 7. إعداد أداة Gradle المركزية بإصدار 8.4 المستقر وتفادي الـ Wrapper التالف
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.4'
-        cache-disabled: false
 
-    # 8. بناء ملف الـ APK باستخدام أمر Gradle المركزي الصافي للتغلب على ملف الـ jar المعطوب
+    # 8. تنظيف مشروع أندرويد لضمان عدم استدعاء الملفات التالفة القديمة من الـ Cache
+    - name: Clean Android Build Cache
+      run: gradle clean
+      working-directory: ./android
+
+    # 9. بناء ملف الـ APK النظيف
     - name: Compile and Build APK
       run: gradle assembleDebug
       working-directory: ./android
 
-    # 9. بناء ملف الـ AAB للمتجر باستخدام أمر Gradle المركزي الصافي
+    # 10. بناء ملف الـ AAB الصافي للمتجر
     - name: Compile and Build App Bundle (AAB)
       run: gradle bundleRelease
       working-directory: ./android
 
-    # 10. استخراج وحفظ ملف الـ APK كمخرج للتحميل
+    # 11. استخراج وحفظ ملف الـ APK كمخرج للتحميل
     - name: Archive and Upload APK
       uses: actions/upload-artifact@v4
       with:
@@ -105,7 +112,7 @@ jobs:
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
 
-    # 11. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
+    # 12. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
     - name: Archive and Upload AAB
       uses: actions/upload-artifact@v4
       with:
