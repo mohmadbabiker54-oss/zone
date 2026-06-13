@@ -98,18 +98,21 @@ jobs:
           fi
         }
 
-        # الدفعة الأولى المستقرة سابقاً
+        # المجموعات التي تم إصلاحها وتجاوزها بنجاح في الخطوات السابقة
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48 48
         fix_bitmap "android/app/src/main/res/drawable-port-mdpi/splash.png" 320 480
         fix_bitmap "android/app/src/main/res/drawable-land-xxxhdpi/splash.png" 1920 1280
         fix_bitmap "android/app/src/main/res/drawable-port-hdpi/splash.png" 480 800
         fix_bitmap "android/app/src/main/res/drawable-land-hdpi/splash.png" 800 480
         fix_bitmap "android/app/src/main/res/drawable-land-mdpi/splash.png" 480 320
-        
-        # الدفعة الثانية الجديدة المكتشفة في الـ Log الأخير (حقن فوري ومباشر بالأبعاد المعيارية)
         fix_bitmap "android/app/src/main/res/drawable/splash.png" 640 960
         fix_bitmap "android/app/src/main/res/drawable-port-xxhdpi/splash.png" 960 1600
         fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png" 144 144
+        
+        # الدفعة الأخيرة المكتشفة في الـ Log الحالي (حقن فوري بالمسار والأبعاد المعيارية الكاملة)
+        fix_bitmap "android/app/src/main/res/drawable-port-xxxhdpi/splash.png" 1280 1920
+        fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png" 48 48
+        fix_bitmap "android/app/src/main/res/drawable-land-xxhdpi/splash.png" 1600 960
         
         # فحص وتطهير باقي صور الـ PNG في المشروع لضمان السلامة الكاملة
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
