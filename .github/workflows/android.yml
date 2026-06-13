@@ -58,10 +58,10 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 6. خطوة المعالجة الحاسمة: تثبيت الأداة، وإعادة صياغة وترميم بايتات الـ PNG المعطوبة
+    # 6. خطوة المعالجة الحاسمة: ترميم وإعادة صياغة بايتات الموارد لجميع المسارات المتضررة صراحة
     - name: Install Environment Dependencies and Force Reconstruct Bitmaps
       run: |
-        # أولاً: تثبيت أداة ImageMagick لتوفير أمر convert على السيرفر
+        # تثبيت أداة ImageMagick لتوفير أمر convert على السيرفر
         echo "Installing ImageMagick toolset..."
         sudo apt-get update && sudo apt-get install -y imagemagick
         
@@ -102,6 +102,11 @@ jobs:
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48 48
         fix_bitmap "android/app/src/main/res/drawable-port-mdpi/splash.png" 320 480
         fix_bitmap "android/app/src/main/res/drawable-land-xxxhdpi/splash.png" 1920 1280
+        
+        # إضافة المسارات الجديدة التي ظهرت في الـ Log الأخير لضمان تطهيرها صراحة بالاسم والأبعاد المعيارية
+        fix_bitmap "android/app/src/main/res/drawable-port-hdpi/splash.png" 480 800
+        fix_bitmap "android/app/src/main/res/drawable-land-hdpi/splash.png" 800 480
+        fix_bitmap "android/app/src/main/res/drawable-land-mdpi/splash.png" 480 320
         
         # فحص وتطهير باقي صور الـ PNG في المشروع لضمان السلامة الكاملة
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
