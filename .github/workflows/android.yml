@@ -5,7 +5,7 @@ on:
     branches:
       - main
   workflow_dispatch:
-
+  
 jobs:
   build:
     name: Generate APK and AAB Packages
