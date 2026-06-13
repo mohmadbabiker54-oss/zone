@@ -110,13 +110,16 @@ jobs:
         fix_bitmap "android/app/src/main/res/drawable-land-xxhdpi/splash.png" 1600 960
         fix_bitmap "android/app/src/main/res/drawable-port-xhdpi/splash.png" 480 640
         
+        # الملف الأخير الوحيد المكتشف في الـ Log الحالي لإنهاء ملف الـ Splash تماماً
+        fix_bitmap "android/app/src/main/res/drawable-land-xhdpi/splash.png" 640 480
+        
         # التطهير الوقائي والمستهدف لكافة إصدارات الأيقونات (ic_launcher) بجميع المجلدات والكثافات لمنع ظهور أي خطأ جديد
         # طبقة mdpi
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48 48
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png" 48 48
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png" 48 48
         
-        # طبقة hdpi (المكتشفة حالياً)
+        # طبقة hdpi
         fix_bitmap "android/app/src/main/res/mipmap-hdpi/ic_launcher.png" 72 72
         fix_bitmap "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png" 72 72
         fix_bitmap "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png" 72 72
@@ -126,7 +129,7 @@ jobs:
         fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png" 96 96
         fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png" 96 96
         
-        # طبقة xxhdpi (المكتشفة حالياً)
+        # طبقة xxhdpi
         fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png" 144 144
         fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png" 144 144
         fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png" 144 144
