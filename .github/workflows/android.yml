@@ -43,7 +43,7 @@ jobs:
       run: |
         npx cap sync android
 
-    # 7. تطبيق الإعدادات المتوافقة وإصلاح صلاحيات الـ SDK تلقائياً
+    # 7. تطبيق الإعدادات المتوافقة وحذف الملفات المتكررة تلقائياً
     - name: Enforce Compatible Configuration and Fix Source Code
       run: |
         # فرض إصدارات مكتبة أندرويد المستقرة لتجنب تعارضات كاباسيتور
@@ -68,13 +68,16 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
+        # سحق التكرار المسبب للخطأ: حذف ملف التداخل لتظل القيمة النظيفة في colors.xml فقط
+        rm -f android/app/src/main/res/values/ic_launcher_background.xml
+
     # 8. إعداد أداة Gradle المركزية بالنسخة 8.4 المستقرة
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.4'
 
-    # 9. تنظيف الكاش القديم بالكامل لضمان بناء التطبيق من الصفر بملفاتك الجديدة
+    # 9. تنظيف الكاش القديم بالكامل لضمان بناء التطبيق من الصفر بملفاتك الجديدة النظيفة
     - name: Clean Android Build Cache
       run: gradle clean
       working-directory: ./android
