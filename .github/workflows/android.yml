@@ -65,7 +65,7 @@ jobs:
         echo "Installing ImageMagick toolset..."
         sudo apt-get update && sudo apt-get install -y imagemagick
         
-        # ترميم ملف الـ XML التالف لمنع انهيار الـ XML Parser
+        # ترميم ملف الـ XML Tالف لمنع انهيار الـ XML Parser
         XML_FILE="android/app/src/main/res/drawable/ic_launcher_background.xml"
         if [ -f "$XML_FILE" ]; then
           sed -i '/<\/vector>/q' "$XML_FILE"
@@ -98,7 +98,7 @@ jobs:
           fi
         }
 
-        # الدفعات السابقة المستقرة (التي تم تجاوز أخطائها بنجاح ساحق)
+        # الدفعات السابقة المستقرة بالكامل
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48 48
         fix_bitmap "android/app/src/main/res/drawable-port-mdpi/splash.png" 320 480
         fix_bitmap "android/app/src/main/res/drawable-land-xxxhdpi/splash.png" 1920 1280
@@ -111,11 +111,14 @@ jobs:
         fix_bitmap "android/app/src/main/res/drawable-port-xxxhdpi/splash.png" 1280 1920
         fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png" 48 48
         fix_bitmap "android/app/src/main/res/drawable-land-xxhdpi/splash.png" 1600 960
-        
-        # الدفعة الأخيرة المكتشفة في الـ Log الحالي (حقن مباشر بالأبعاد المعيارية الكاملة)
         fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png" 96 96
         fix_bitmap "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" 192 192
         fix_bitmap "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" 192 192
+        
+        # الدفعة الأخيرة المطلقة (المكتشفة في طبقة xhdpi الحالية)
+        fix_bitmap "android/app/src/main/res/drawable-port-xhdpi/splash.png" 480 640
+        fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png" 96 96
+        fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png" 96 96
         
         # فحص وتطهير باقي صور الـ PNG في المشروع لضمان السلامة الكاملة
         find android/app/src/main/res/ -name "*.png" | while read -r img; do
