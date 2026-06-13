@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. جلب الأكواد من المستودع
+    # 1. جلب الأكواد الحديثة والتعديلات الأخيرة من المستودع
     - name: Checkout Source Code
       uses: actions/checkout@v4
 
@@ -23,7 +23,7 @@ jobs:
         java-version: '21'
         distribution: 'zulu'
 
-    # 3. إعداد بيئة Node.js
+    # 3. إعداد بيئة Node.js لشغيل أدوات كاباسيتور
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
@@ -33,7 +33,17 @@ jobs:
     - name: Install Project Dependencies
       run: npm install --legacy-peer-deps
 
-    # 5. معالجة وحل تعارضات الأكواد وإعدادات الـ SDK وصلاحيات MainActivity تلقائياً
+    # 5. بناء كود الويب الحديث لضمان تجميع التعديلات الأخيرة بنسبة 100%
+    - name: Build Web Application
+      run: |
+        npm run build --if-present
+
+    # 6. مزامنة ونقل كود الويب والأيقونات الحديثة إلى مجلد الأندرويد تلقائياً
+    - name: Sync Capacitor to Android Platform
+      run: |
+        npx cap sync android
+
+    # 7. معالجة وحل تعارضات الأكواد وإعدادات الـ SDK وصلاحيات MainActivity تلقائياً
     - name: Enforce Compatible Configuration and Fix Source Code
       run: |
         # فرض إصدارات مكتبة أندرويد المستقرة
@@ -58,8 +68,8 @@ jobs:
           sed -i 's/protected void onStart()/public void onStart()/g' "$MAIN_ACTIVITY_PATH"
         fi
 
-    # 6. خطوة المعالجة الحاسمة: ترميم وإعادة صياغة بايتات الموارد لجميع المسارات المتضررة صراحة
-    - name: Install Environment Dependencies and Force Reconstruct Bitmaps
+    # 8. خطوة المعالجة الحاسمة: تطهير شاشات الـ Splash وإعادة بناء الأيقونات من تصميمك الحقيقي
+    - name: Install Environment Dependencies and Force Reconstruct Bitmaps From Real Icon
       run: |
         # تثبيت أداة ImageMagick لتوفير أمر convert على السيرفر
         echo "Installing ImageMagick toolset..."
@@ -73,110 +83,123 @@ jobs:
         
         rm -f android/app/src/main/res/values/ic_launcher_background.xml
         
-        echo "Executing advanced image structural re-mapping..."
+        echo "Locating and protecting the real application icon source..."
         
-        # دالة ذكية لفحص وتوليد الأبعاد المعيارية للصور المسببة للمشكلة لحقن بايتات سليمة
-        fix_bitmap() {
+        # تتبع أيقونة التطبيق الحقيقية الخاصة بك في الكثافة الأعلى كمصدر نقي للتصميم
+        REAL_ICON_SOURCE="android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
+        
+        # خطة تأمين: إذا لم تكن متوفرة في xxxhdpi، نبحث عنها في باقي مجلدات الـ mipmap للامساك بها
+        if [ ! -f "$REAL_ICON_SOURCE" ]; then
+          REAL_ICON_SOURCE=$(find android/app/src/main/res/mipmap-* -name "ic_launcher.png" | head -n 1)
+        fi
+        
+        echo "Master Icon Source Selected: $REAL_ICON_SOURCE"
+        
+        # تنظيف البايتات للملف المصدر الحقيقي لضمان زوال التلف وتحويله لـ PNG نقي وخالص
+        if [ -f "$REAL_ICON_SOURCE" ]; then
+          convert "$REAL_ICON_SOURCE" -strip png24:master_icon_clean.png
+        else
+          # ملجأ أخير في حال عدم وجود أي صورة أيقونة على السيرفر
+          convert -size 512x512 xc:"#2E7D32" -strip png24:master_icon_clean.png
+        fi
+
+        # دالة ترميم وتأمين شاشات الـ Splash للعبور الصافي من أداة AAPT2
+        fix_splash() {
           local target_path="$1"
           local default_width="$2"
           local default_height="$3"
-          
           if [ -f "$target_path" ]; then
-            echo "Re-encoding or generating fallback for: $target_path"
-            # محاولة قراءة الملف وإعادة رسمه
-            convert "$target_path" -strip png24:temp_fix.png 2>/dev/null || true
-            
-            # إذا فشلت الأداة في إنتاج ملف سليم بسبب تلف الأصل، يتم توليد البنية برمجياً بالأبعاد المطلوبة
-            if [ ! -s temp_fix.png ]; then
-              echo "File strictly corrupted. Re-rendering standard canvas dimensions ($default_width x $default_height)..."
-              convert -size ${default_width}x${default_height} xc:"#4CAF50" -strip png24:temp_fix.png
+            convert "$target_path" -strip png24:temp_splash.png 2>/dev/null || true
+            if [ ! -s temp_splash.png ]; then
+              convert -size ${default_width}x${default_height} xc:"#2E7D32" -strip png24:temp_splash.png
             fi
-            
             rm -f "$target_path"
-            mv temp_fix.png "$target_path"
+            mv temp_splash.png "$target_path"
             chmod 664 "$target_path"
           fi
         }
 
-        # مصفوفة الـ Splash المحمية والمعاد صياغتها بنجاح
-        fix_bitmap "android/app/src/main/res/drawable-port-mdpi/splash.png" 320 480
-        fix_bitmap "android/app/src/main/res/drawable-land-xxxhdpi/splash.png" 1920 1280
-        fix_bitmap "android/app/src/main/res/drawable-port-hdpi/splash.png" 480 800
-        fix_bitmap "android/app/src/main/res/drawable-land-hdpi/splash.png" 800 480
-        fix_bitmap "android/app/src/main/res/drawable-land-mdpi/splash.png" 480 320
-        fix_bitmap "android/app/src/main/res/drawable/splash.png" 640 960
-        fix_bitmap "android/app/src/main/res/drawable-port-xxhdpi/splash.png" 960 1600
-        fix_bitmap "android/app/src/main/res/drawable-port-xxxhdpi/splash.png" 1280 1920
-        fix_bitmap "android/app/src/main/res/drawable-land-xxhdpi/splash.png" 1600 960
-        fix_bitmap "android/app/src/main/res/drawable-port-xhdpi/splash.png" 480 640
+        # دالة توليد وبناء الأيقونات بجميع الكثافات والأبعاد انطلاقاً من التصميم الحقيقي النظيف
+        generate_real_icon() {
+          local target_path="$1"
+          local size="$2"
+          
+          echo "Generating clean PNG dimension (${size}x${size}) for: $target_path"
+          # إعادة تحجيم الأيقونة الحقيقية بدقة لتعويض الملف التالف بالبنية الجديدة النظيفة
+          convert master_icon_clean.png -resize ${size}x${size} -strip png24:temp_icon.png
+          
+          rm -f "$target_path"
+          mkdir -p "$(dirname "$target_path")"
+          mv temp_icon.png "$target_path"
+          chmod 664 "$target_path"
+        }
+
+        # 1. معالجة وتطهير كافة شاشات الـ Splash في المشروع
+        fix_splash "android/app/src/main/res/drawable-port-mdpi/splash.png" 320 480
+        fix_splash "android/app/src/main/res/drawable-land-xxxhdpi/splash.png" 1920 1280
+        fix_splash "android/app/src/main/res/drawable-port-hdpi/splash.png" 480 800
+        fix_splash "android/app/src/main/res/drawable-land-hdpi/splash.png" 800 480
+        fix_splash "android/app/src/main/res/drawable-land-mdpi/splash.png" 480 320
+        fix_splash "android/app/src/main/res/drawable/splash.png" 640 960
+        fix_splash "android/app/src/main/res/drawable-port-xxhdpi/splash.png" 960 1600
+        fix_splash "android/app/src/main/res/drawable-port-xxxhdpi/splash.png" 1280 1920
+        fix_splash "android/app/src/main/res/drawable-land-xxhdpi/splash.png" 1600 960
+        fix_splash "android/app/src/main/res/drawable-port-xhdpi/splash.png" 480 640
+        fix_splash "android/app/src/main/res/drawable-land-xhdpi/splash.png" 640 480
         
-        # الملف الأخير الوحيد المكتشف في الـ Log الحالي لإنهاء ملف الـ Splash تماماً
-        fix_bitmap "android/app/src/main/res/drawable-land-xhdpi/splash.png" 640 480
+        # 2. توليد مصفوفة الأيقونات (ic_launcher) بالكامل اعتماداً على أيقونتك الحقيقية النظيفة
+        # طبقة mdpi (48x48)
+        generate_real_icon "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48
+        generate_real_icon "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png" 48
+        generate_real_icon "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png" 48
         
-        # التطهير الوقائي والمستهدف لكافة إصدارات الأيقونات (ic_launcher) بجميع المجلدات والكثافات لمنع ظهور أي خطأ جديد
-        # طبقة mdpi
-        fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher.png" 48 48
-        fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png" 48 48
-        fix_bitmap "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png" 48 48
+        # طبقة hdpi (72x72)
+        generate_real_icon "android/app/src/main/res/mipmap-hdpi/ic_launcher.png" 72
+        generate_real_icon "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png" 72
+        generate_real_icon "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png" 72
         
-        # طبقة hdpi
-        fix_bitmap "android/app/src/main/res/mipmap-hdpi/ic_launcher.png" 72 72
-        fix_bitmap "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png" 72 72
-        fix_bitmap "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png" 72 72
+        # طبقة xhdpi (96x96)
+        generate_real_icon "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png" 96
+        generate_real_icon "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png" 96
+        generate_real_icon "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png" 96
         
-        # طبقة xhdpi
-        fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png" 96 96
-        fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png" 96 96
-        fix_bitmap "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png" 96 96
+        # طبقة xxhdpi (144x144)
+        generate_real_icon "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png" 144
+        generate_real_icon "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png" 144
+        generate_real_icon "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png" 144
         
-        # طبقة xxhdpi
-        fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png" 144 144
-        fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png" 144 144
-        fix_bitmap "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png" 144 144
+        # طبقة xxxhdpi (192x192)
+        generate_real_icon "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" 192
+        generate_real_icon "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" 192
+        generate_real_icon "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" 192
         
-        # طبقة xxxhdpi
-        fix_bitmap "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" 192 192
-        fix_bitmap "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" 192 192
-        fix_bitmap "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" 192 192
-        
-        # فحص وتطهير باقي صور الـ PNG في المشروع لضمان السلامة الكاملة
-        find android/app/src/main/res/ -name "*.png" | while read -r img; do
-          if [ -f "$img" ]; then
-            convert "$img" -strip png24:reconstructed_tmp.png 2>/dev/null || true
-            if [ -s reconstructed_tmp.png ]; then
-              rm -f "$img"
-              mv reconstructed_tmp.png "$img"
-              chmod 664 "$img"
-            else
-              rm -f reconstructed_tmp.png
-            fi
-          fi
-        done
+        # إزالة ملف التطهير المؤقت
+        rm -f master_icon_clean.png
         
         echo "android.crunchPngs=false" >> android/gradle.properties
 
-    # 7. إعداد أداة Gradle المركزية بإصدار 8.4 المستقر وتفادي الـ Wrapper التالف
+    # 9. إعداد أداة Gradle المركزية بإصدار 8.4 المستقر وتفادي الـ Wrapper التالف
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.4'
 
-    # 8. تنظيف مشروع أندرويد لضمان عدم استدعاء الملفات التالفة القديمة من الـ Cache
+    # 10. تنظيف مشروع أندرويد لضمان إزالة أي مخلفات كاش قديمة
     - name: Clean Android Build Cache
       run: gradle clean
       working-directory: ./android
 
-    # 9. بناء ملف الـ APK النظيف
+    # 11. بناء ملف الـ APK النظيف بأحدث كود وأيقونة حقيقية
     - name: Compile and Build APK
       run: gradle assembleDebug
       working-directory: ./android
 
-    # 10. بناء ملف الـ AAB الصافي للمتجر
+    # 12. بناء ملف الـ AAB الصافي للمتجر بأحدث كود وأيقونة حقيقية
     - name: Compile and Build App Bundle (AAB)
       run: gradle bundleRelease
       working-directory: ./android
 
-    # 11. استخراج وحفظ ملف الـ APK كمخرج للتحميل
+    # 13. استخراج وحفظ ملف الـ APK كمخرج للتحميل والتجربة
     - name: Archive and Upload APK
       uses: actions/upload-artifact@v4
       with:
@@ -184,7 +207,7 @@ jobs:
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
 
-    # 12. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
+    # 14. استخراج وحفظ ملف الـ AAB كمخرج للرفع للمتجر
     - name: Archive and Upload AAB
       uses: actions/upload-artifact@v4
       with:
